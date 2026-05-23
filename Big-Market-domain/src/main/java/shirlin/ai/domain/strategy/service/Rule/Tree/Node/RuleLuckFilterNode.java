@@ -1,4 +1,4 @@
-package shirlin.ai.domain.strategy.service.Rule.Tree.Impl;
+package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
 
 import com.alibaba.fastjson2.JSON;
 import jakarta.annotation.Resource;

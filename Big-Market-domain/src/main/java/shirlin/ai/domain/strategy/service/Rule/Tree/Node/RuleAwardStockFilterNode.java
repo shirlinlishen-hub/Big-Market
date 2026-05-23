@@ -1,4 +1,4 @@
-package shirlin.ai.domain.strategy.service.Rule.Tree.Impl;
+package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

@@ -10,12 +10,7 @@ public class AbstractRuleFilterService implements IStrategyLogicFilterService {
 
     @Override
     public RuleFilterResultEntity filter(RaffleFactorEntity factory) {
-        //参数校验
-        Long strategyId = factory.getStrategyId();
-        String userId = factory.getUserId();
-        if(strategyId == null || userId == null)
-            throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getInfo());
-        return  doFilter(factory);
+        
 
     }
 
