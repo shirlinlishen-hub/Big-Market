@@ -1,4 +1,6 @@
 package shirlin.ai.api;
 
-public class IRaffleService {
+public interface IRaffleService {
+
+
 }

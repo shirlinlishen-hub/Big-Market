@@ -1,4 +1,4 @@
-package shirlin.ai.domain.strategy.service.Rule.Impl;
+package shirlin.ai.domain.strategy.service.Rule.Tree.Impl;
 
 import com.alibaba.fastjson2.JSON;
 import jakarta.annotation.Resource;
@@ -10,7 +10,7 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleLuckConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.AbstractRuleFilterService;
+import shirlin.ai.domain.strategy.service.Rule.Tree.AbstractRuleFilterService;
 
 /**
  * 运气值兜底规则（保留备用；当前主流程不调用此节点）
@@ -25,6 +25,8 @@ public class RuleLuckFilter extends AbstractRuleFilterService {
 
     @Override
     protected RuleFilterResultEntity doFilter(RaffleFactorEntity factory) {
+
+        //1. 查找是否存在兜底规则 rule_luck
         StrategyRuleEntity rule = strategyRepository.queryStrategyRuleByModel(
                 factory.getStrategyId(), RuleTypeVO.RULELUCK.getRuleModel());
 
@@ -40,12 +42,14 @@ public class RuleLuckFilter extends AbstractRuleFilterService {
         if (currentLuck >= config.getLuckCount()) {
             strategyRepository.resetUserLuckValue(factory.getUserId(), factory.getStrategyId());
             log.info("运气值达到阈值 userId:{} luckCount:{}", factory.getUserId(), config.getLuckCount());
+            //返回兜底产品
             return RuleFilterResultEntity.builder()
                     .type(RuleFilterResultEntity.Type.TAKE_OVER)
                     .awardId(config.getAwardId())
                     .build();
         }
 
+        //继续后续流程
         return RuleFilterResultEntity.builder()
                 .type(RuleFilterResultEntity.Type.ALLOW)
                 .build();

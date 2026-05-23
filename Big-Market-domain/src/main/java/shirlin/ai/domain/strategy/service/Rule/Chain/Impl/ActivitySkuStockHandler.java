@@ -3,7 +3,7 @@ package shirlin.ai.domain.strategy.service.Rule.Chain.Impl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import shirlin.ai.domain.activity.adapter.repository.IActivityRepository;
+import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
 import shirlin.ai.domain.strategy.service.Rule.Chain.AbstractActivityChainHandler;
 import shirlin.ai.types.enums.ResponseCode;
 import shirlin.ai.types.exception.AppException;

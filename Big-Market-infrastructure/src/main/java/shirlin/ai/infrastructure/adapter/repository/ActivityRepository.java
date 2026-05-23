@@ -2,7 +2,7 @@ package shirlin.ai.infrastructure.adapter.repository;
 
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Repository;
-import shirlin.ai.domain.activity.adapter.repository.IActivityRepository;
+import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
 import shirlin.ai.infrastructure.dao.IActivityAccountDao;
 import shirlin.ai.infrastructure.dao.IActivityDao;
 import shirlin.ai.infrastructure.dao.IUserAwardRecordDao;

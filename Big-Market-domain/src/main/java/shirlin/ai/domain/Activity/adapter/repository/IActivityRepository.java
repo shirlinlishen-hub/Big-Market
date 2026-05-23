@@ -1,4 +1,4 @@
-package shirlin.ai.domain.activity.adapter.repository;
+package shirlin.ai.domain.Activity.adapter.repository;
 
 public interface IActivityRepository {
 

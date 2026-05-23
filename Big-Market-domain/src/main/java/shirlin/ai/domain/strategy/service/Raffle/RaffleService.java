@@ -4,7 +4,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import shirlin.ai.domain.activity.adapter.repository.IActivityRepository;
+import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RaffleResultEntity;

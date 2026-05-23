@@ -1,4 +1,4 @@
-package shirlin.infrastructure.redis;
+package shirlin.ai.infrastructure.redis;
 
 import org.redisson.api.*;
 

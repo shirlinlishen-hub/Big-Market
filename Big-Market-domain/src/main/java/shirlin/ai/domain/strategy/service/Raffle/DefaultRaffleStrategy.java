@@ -1,69 +1,119 @@
 package shirlin.ai.domain.strategy.service.Raffle;
 
+import com.alibaba.fastjson2.JSON;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
+import shirlin.ai.domain.strategy.model.entity.RuleLockConfigEntity;
+import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.Factory.DefaultLogicFactory;
-import shirlin.ai.domain.strategy.service.Rule.IStrategyLogicFilterService;
+import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.Tree.IStrategyLogicFilterService;
 
-import java.util.Set;
+import java.util.Collections;
 
-public class DefaultRaffleService extends AbstrackRaffleService {
-
+/**
+ * 默认抽奖策略
+ *
+ * 前置（责任链）：黑名单 → 权重 → 默认
+ * 后置（规则树）：Lock → Stock → 兜底
+ */
+@Slf4j
+@Service
+public class DefaultRaffleStrategy extends AbstrackRaffleStrategy {
 
     @Resource
-    private DefaultLogicFactory  defaultLogicFactory;
+    private DefaultLogicFactory defaultLogicFactory;
 
     @Resource
     private IStrategyRepository strategyRepository;
 
+    // =====================================================================
+    // 前置规则：责任链
+    // =====================================================================
+
     @Override
     protected RuleFilterResultEntity doBeforeRaffleRuleFilter(RaffleFactorEntity factor) {
 
-        //1. N次解锁
-        IStrategyLogicFilterService ruleModel = defaultLogicFactory.getFilter(RuleTypeVO.getRuleBeanName(2));
-        RuleFilterResultEntity lockResult = ruleModel.filter(factor);
+        // 节点1：黑名单规则 — 命中则直接接管，不再往下走
+        IStrategyLogicFilterService blacklistFilter =
+                defaultLogicFactory.getFilter(RuleTypeVO.RULEBLACKLIST.getRuleBeanName());
+        RuleFilterResultEntity blacklistResult = blacklistFilter.filter(factor);
+        if (RuleFilterResultEntity.Type.TAKE_OVER.equals(blacklistResult.getType())) {
+            return blacklistResult;
+        }
 
-        Set<Integer> excludeIds = lockResult.getExcludeAwardIds();
+        // 节点2：权重规则 — 决定本次抽奖排除哪些奖品
+        IStrategyLogicFilterService weightFilter =
+                defaultLogicFactory.getFilter(RuleTypeVO.RULEWEIGHT.getRuleBeanName());
+        RuleFilterResultEntity weightResult = weightFilter.filter(factor);
 
-        //2. 运气值兜底检查
-        IStrategyLogicFilterService ruleModel2 = defaultLogicFactory.getFilter(RuleTypeVO.getRuleBeanName(3));
-        RuleFilterResultEntity luckResult = ruleModel2.filter(factor);
-        if(RuleFilterResultEntity.Type.TAKE_OVER.equals(luckResult.getType()))
-            return luckResult;
-
+        // 节点3：默认规则 — 透传权重规则的排除集（未命中任何权重阈值时集合为空）
         return RuleFilterResultEntity.builder()
                 .type(RuleFilterResultEntity.Type.ALLOW)
-                .excludeAwardIds(excludeIds)
+                .excludeAwardIds(
+                        weightResult.getExcludeAwardIds() != null
+                                ? weightResult.getExcludeAwardIds()
+                                : Collections.emptySet())
                 .build();
     }
+
+    // =====================================================================
+    // 后置规则：规则树  Lock → Stock → 兜底
+    // =====================================================================
 
     @Override
     protected RuleFilterResultEntity doAfterRaffleRuleFilter(RaffleFactorEntity factor, Integer awardId) {
-        //1. 库存扣减 （Redis预扣 + DB异步同步）
-        boolean stockResult = strategyRepository.deductStock(factor.getStrategyId(),awardId);
-        if(!stockResult){
-            int awardId_fallback = strategyRepository.queryMaxAwardId(factor.getStrategyId());
-            return RuleFilterResultEntity.builder()
-                    .type(RuleFilterResultEntity.Type.TAKE_OVER)
-                    .awardId(awardId_fallback) // 兜底奖品ID, 实际应从规则配置读取
-                    .build();
+
+        Long strategyId = factor.getStrategyId();
+        String userId   = factor.getUserId();
+
+        // ---- 节点1：Lock（N 次解锁） ----
+        StrategyRuleEntity lockRule = strategyRepository.queryStrategyRuleByModel(
+                strategyId, RuleTypeVO.RULELOCK.getRuleModel());
+
+        if (lockRule != null) {
+            RuleLockConfigEntity lockConfig = JSON.parseObject(lockRule.getRuleValue(), RuleLockConfigEntity.class);
+            int userDrawCount = strategyRepository.queryUserDrawCount(userId, strategyId);
+
+            boolean isLocked = lockConfig.getLockedAwardIds() != null
+                    && lockConfig.getLockedAwardIds().contains(awardId)
+                    && userDrawCount < lockConfig.getUnlockCount();
+
+            if (isLocked) {
+                log.info("Lock 拦截 userId:{} awardId:{} drawCount:{}/{}",
+                        userId, awardId, userDrawCount, lockConfig.getUnlockCount());
+                // 走兜底节点
+                return buildFallback(strategyId);
+            }
         }
 
-        // 2. 运气值累加 (未中大奖时+1)
-        if (!isBigAward(awardId)) {
-            strategyRepository.incrementLuckValue(factor.getUserId(), factor.getStrategyId());
+        // ---- 节点2：Stock（库存校验，Redis 原子扣减） ----
+        boolean stockOk = strategyRepository.deductStock(strategyId, awardId);
+        if (!stockOk) {
+            log.info("Stock 耗尽 strategyId:{} awardId:{}", strategyId, awardId);
+            // 走兜底节点
+            return buildFallback(strategyId);
         }
 
+        // 全部通过，放行
         return RuleFilterResultEntity.builder()
                 .type(RuleFilterResultEntity.Type.ALLOW)
                 .build();
     }
 
-    private boolean isBigAward(Integer awardId) {
-        // 一等奖、二等奖视为大奖
-        return awardId == 101 || awardId == 102;
+    /**
+     * 兜底节点：取最大概率奖品作为最终安全网
+     */
+    private RuleFilterResultEntity buildFallback(Long strategyId) {
+        Integer fallbackAwardId = strategyRepository.queryMaxAwardId(strategyId);
+        return RuleFilterResultEntity.builder()
+                .type(RuleFilterResultEntity.Type.TAKE_OVER)
+                .awardId(fallbackAwardId)
+                .build();
     }
+
 }

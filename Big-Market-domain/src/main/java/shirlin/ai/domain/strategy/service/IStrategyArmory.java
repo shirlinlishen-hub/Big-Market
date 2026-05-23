@@ -1,4 +1,4 @@
-package shirlin.ai.domain.strategy.service.Armory;
+package shirlin.ai.domain.strategy.service;
 
 import java.util.Set;
 
@@ -9,8 +9,21 @@ import java.util.Set;
  */
 public interface IStrategyArmory {
 
+    /**
+     * 活动信息预热，包括配置，库存等
+     * @param StrategyId
+     */
     void assembleLotteryStrategy(Long StrategyId);
+
+    /**
+     * 获取商品Id
+     * @param StrategyId
+     * @return
+     */
     Integer getRandomAwardId(Long StrategyId);
+
+
     Integer getRandomAwardId(Long strategyId, Set<Integer> excludeAwardIds);
+
 
 }

@@ -1,4 +1,4 @@
-package shirlin.ai.domain.strategy.service.Rule;
+package shirlin.ai.domain.strategy.service.Rule.Tree;
 
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;

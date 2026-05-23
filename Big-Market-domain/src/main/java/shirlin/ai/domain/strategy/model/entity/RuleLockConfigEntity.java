@@ -1,4 +1,18 @@
 package shirlin.ai.domain.strategy.model.entity;
 
-public class RuleLockConfig {
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class RuleLockConfigEntity {
+
+    public int unlockCount;
+    public List<Integer> lockedAwardIds;
 }

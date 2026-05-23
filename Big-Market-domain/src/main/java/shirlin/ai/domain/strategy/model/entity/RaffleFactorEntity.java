@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 /**
  * 抽奖因子，入参
  */
-public class RaffleFactoryEntity {
+public class RaffleFactorEntity {
 
     private String userId;
     private Long strategyId;

@@ -1,4 +1,4 @@
-package shirlin.ai.domain.strategy.service.Rule.Impl;
+package shirlin.ai.domain.strategy.service.Rule.Tree.Impl;
 
 import com.alibaba.fastjson2.JSON;
 import jakarta.annotation.Resource;
@@ -10,7 +10,7 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleLockConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.AbstractRuleFilterService;
+import shirlin.ai.domain.strategy.service.Rule.Tree.AbstractRuleFilterService;
 
 /**
  * N次解锁规则（规则树 Lock 节点）

@@ -25,6 +25,12 @@
             <groupId>shirlin.ai</groupId>
             <artifactId>Big-Market-domain</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.44.0</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>

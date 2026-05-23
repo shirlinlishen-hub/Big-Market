@@ -1,8 +1,8 @@
-package shirlin.ai.domain.strategy.service.Rule.Factory;
+package shirlin.ai.domain.strategy.service.Rule.Tree.Factory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import shirlin.ai.domain.strategy.service.Rule.IStrategyLogicFilterService;
+import shirlin.ai.domain.strategy.service.Rule.Tree.IStrategyLogicFilterService;
 import shirlin.ai.types.exception.AppException;
 
 import java.util.Map;

@@ -11,7 +11,7 @@ import java.util.Date;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AcitivityAccount {
+public class ActivityAccount {
 
     private Long id;
     private String userId;
