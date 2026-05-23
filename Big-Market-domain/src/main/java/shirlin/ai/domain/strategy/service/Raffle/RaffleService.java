@@ -38,6 +38,10 @@ public class RaffleService implements IRaffleService {
     @Resource
     private IRaffleStrategy raffleStrategy;
 
+    /** 自注入以确保 @Transactional 通过 Spring AOP 代理生效，避免 this. 调用绕过代理 */
+    @Resource
+    private RaffleService self;
+
     @Override
     public RaffleResultEntity doRaffle(String userId, Long strategyId) {
 
@@ -45,7 +49,8 @@ public class RaffleService implements IRaffleService {
         activityChainHandlerFactory.getChainHead().apply(userId, strategyId);
 
         // Phase 2：事务内操作（创建订单 + 扣减三层额度）
-        Long orderId = createOrderAndDeductQuota(userId, strategyId);
+        // 通过 self 调用，确保 @Transactional 注解由 Spring 代理拦截，失败时正确回滚
+        Long orderId = self.createOrderAndDeductQuota(userId, strategyId);
 
         // Phase 3：执行抽奖（策略链 + 规则树）
         RaffleFactorEntity factor = RaffleFactorEntity.builder()

@@ -44,6 +44,9 @@ public class ActivityRepository implements IActivityRepository {
     private Long queryActivityId(Long strategyId) {
         Activity activity = activityDao.selectByStrategyId(strategyId);
         if (activity == null) {
+            // 理想错误码应为 ACTIVITY_NOT_EXISTS（活动记录不存在），但枚举中暂未定义该值。
+            // ResponseCode 中最接近的语义是 STRATEGY_NOT_ACTIVE（0003，"活动未开始或已下线"），
+            // 当前以其代替；如后续新增 ACTIVITY_NOT_EXISTS 枚举值，请同步替换此处。
             throw new AppException(ResponseCode.STRATEGY_NOT_ACTIVE.getInfo());
         }
         return activity.getActivityId();
