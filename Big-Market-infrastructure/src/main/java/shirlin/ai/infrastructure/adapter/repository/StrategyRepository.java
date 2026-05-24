@@ -207,8 +207,8 @@ public class StrategyRepository implements IStrategyRepository {
 
     @Override
     public void cacheStrategyAwardStock(Long strategyId, Integer awardId, Integer awardSurplus) {
-        // awardSurplus 为 null 表示该奖品库存无限，不写 Redis，deductStock 会直接放行
-        if (awardSurplus == null) return;
+        // null 或负数（-1 表示无限）均跳过，deductStock 的 isExists 检查会直接放行
+        if (awardSurplus == null || awardSurplus < 0) return;
         redisService.setAtomicLong(AWARD_STOCK_KEY + strategyId + ":" + awardId, awardSurplus);
     }
 

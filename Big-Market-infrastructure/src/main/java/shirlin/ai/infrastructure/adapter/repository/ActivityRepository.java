@@ -61,6 +61,7 @@ public class ActivityRepository implements IActivityRepository {
 
     @Override
     public boolean deductActivitySkuStock(Long activityId,Long skuId) {
+
         String stockKey = SKU_STOCK_KEY + activityId + skuId;
 
         if (!redisService.isExists(stockKey)) {
@@ -69,7 +70,7 @@ public class ActivityRepository implements IActivityRepository {
 
         long remaining = redisService.decr(stockKey);
         if (remaining < 0) {
-            redisService.setValue(stockKey, 0L);
+            redisService.setAtomicLong(stockKey, 0L);
             return false;
         }
 

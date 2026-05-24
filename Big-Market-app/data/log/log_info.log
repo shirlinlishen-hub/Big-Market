@@ -537,3 +537,158 @@ Caused by: java.lang.NullPointerException: Cannot invoke "java.util.Map.entrySet
 26-05-24.17:11:16.911 [main            ] WARN  ActivitySkuStockHandler - SKU 库存不足 activityId:20001
 26-05-24.17:11:16.953 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
 26-05-24.17:11:17.361 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.
+26-05-24.19:51:17.472 [main            ] INFO  RaffleServiceTest      - Starting RaffleServiceTest using Java 21.0.9 with PID 40940 (started by asus in C:\Users\asus\Desktop\Big-Market\Big-Market-app)
+26-05-24.19:51:17.474 [main            ] INFO  RaffleServiceTest      - The following 1 profile is active: "dev"
+26-05-24.19:51:18.916 [main            ] INFO  RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+26-05-24.19:51:18.924 [main            ] INFO  RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+26-05-24.19:51:19.008 [main            ] INFO  RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 49 ms. Found 0 Redis repository interfaces.
+26-05-24.19:51:21.332 [main            ] INFO  Version                - Redisson 3.44.0
+26-05-24.19:51:21.774 [redisson-netty-1-5] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.19:51:27.992 [redisson-netty-1-15] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.19:51:28.198 [redisson-netty-1-24] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.19:51:29.007 [main            ] INFO  OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+26-05-24.19:51:30.085 [main            ] INFO  RaffleServiceTest      - Started RaffleServiceTest in 13.313 seconds (process running for 15.063)
+26-05-24.19:51:30.090 [main            ] INFO  ActivityAutoConfiguration - 开始自动装配, 活动ID:[20001], 策略ID:[100001]
+26-05-24.19:51:30.154 [main            ] INFO  HikariDataSource       - HikariPool-1 - Starting...
+26-05-24.19:51:30.955 [main            ] INFO  HikariPool             - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@30a6984c
+26-05-24.19:51:30.957 [main            ] INFO  HikariDataSource       - HikariPool-1 - Start completed.
+26-05-24.19:51:31.362 [main            ] INFO  ActivityAutoConfiguration - 活动装配完成
+26-05-24.19:51:32.159 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.19:51:32.185 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.19:51:32.185 [main            ] INFO  ActivityAutoConfiguration - 策略装配完成
+26-05-24.19:51:36.006 [main            ] WARN  ActivitySkuStockHandler - SKU 库存不足 activityId:20001
+26-05-24.19:51:36.061 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
+26-05-24.19:51:40.141 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.
+26-05-24.19:53:30.174 [main            ] INFO  RaffleServiceTest      - Starting RaffleServiceTest using Java 21.0.9 with PID 2428 (started by asus in C:\Users\asus\Desktop\Big-Market\Big-Market-app)
+26-05-24.19:53:30.176 [main            ] INFO  RaffleServiceTest      - The following 1 profile is active: "dev"
+26-05-24.19:53:31.132 [main            ] INFO  RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+26-05-24.19:53:31.136 [main            ] INFO  RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+26-05-24.19:53:31.295 [main            ] INFO  RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 123 ms. Found 0 Redis repository interfaces.
+26-05-24.19:53:34.802 [main            ] INFO  Version                - Redisson 3.44.0
+26-05-24.19:53:35.485 [redisson-netty-1-4] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.19:53:39.985 [redisson-netty-1-13] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.19:53:41.152 [main            ] INFO  OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+26-05-24.19:53:42.600 [main            ] INFO  RaffleServiceTest      - Started RaffleServiceTest in 13.067 seconds (process running for 14.406)
+26-05-24.19:53:42.607 [main            ] INFO  ActivityAutoConfiguration - 开始自动装配, 活动ID:[20001], 策略ID:[100001]
+26-05-24.19:53:42.692 [main            ] INFO  HikariDataSource       - HikariPool-1 - Starting...
+26-05-24.19:53:43.899 [main            ] INFO  HikariPool             - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@113cc14d
+26-05-24.19:53:43.903 [main            ] INFO  HikariDataSource       - HikariPool-1 - Start completed.
+26-05-24.19:53:48.599 [main            ] INFO  ActivityAutoConfiguration - 活动装配完成
+26-05-24.19:53:50.563 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.19:53:50.591 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.19:53:50.592 [main            ] INFO  ActivityAutoConfiguration - 策略装配完成
+26-05-24.19:53:57.861 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
+26-05-24.19:54:18.113 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.
+26-05-24.19:57:09.030 [main            ] INFO  RaffleServiceTest      - Starting RaffleServiceTest using Java 21.0.9 with PID 7812 (started by asus in C:\Users\asus\Desktop\Big-Market\Big-Market-app)
+26-05-24.19:57:09.032 [main            ] INFO  RaffleServiceTest      - The following 1 profile is active: "dev"
+26-05-24.19:57:09.983 [main            ] INFO  RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+26-05-24.19:57:09.986 [main            ] INFO  RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+26-05-24.19:57:10.051 [main            ] INFO  RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 46 ms. Found 0 Redis repository interfaces.
+26-05-24.19:57:11.671 [main            ] INFO  Version                - Redisson 3.44.0
+26-05-24.19:57:12.049 [redisson-netty-1-4] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.19:57:12.263 [redisson-netty-1-13] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.19:57:12.901 [main            ] INFO  OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+26-05-24.19:57:13.611 [main            ] INFO  RaffleServiceTest      - Started RaffleServiceTest in 5.188 seconds (process running for 6.427)
+26-05-24.19:57:13.614 [main            ] INFO  ActivityAutoConfiguration - 开始自动装配, 活动ID:[20001], 策略ID:[100001]
+26-05-24.19:57:13.663 [main            ] INFO  HikariDataSource       - HikariPool-1 - Starting...
+26-05-24.19:57:14.477 [main            ] INFO  HikariPool             - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@113cc14d
+26-05-24.19:57:14.479 [main            ] INFO  HikariDataSource       - HikariPool-1 - Start completed.
+26-05-24.19:57:14.738 [main            ] INFO  ActivityAutoConfiguration - 活动装配完成
+26-05-24.19:57:15.371 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.19:57:15.393 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.19:57:15.394 [main            ] INFO  ActivityAutoConfiguration - 策略装配完成
+26-05-24.19:57:19.101 [main            ] WARN  ActivitySkuStockHandler - SKU:30001 库存不足 activityId:20001
+26-05-24.19:57:19.161 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
+26-05-24.19:57:20.323 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.
+26-05-24.20:10:07.521 [main            ] INFO  RaffleServiceTest      - Starting RaffleServiceTest using Java 21.0.9 with PID 36764 (started by asus in C:\Users\asus\Desktop\Big-Market\Big-Market-app)
+26-05-24.20:10:07.522 [main            ] INFO  RaffleServiceTest      - The following 1 profile is active: "dev"
+26-05-24.20:10:08.513 [main            ] INFO  RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+26-05-24.20:10:08.516 [main            ] INFO  RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+26-05-24.20:10:08.577 [main            ] INFO  RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 43 ms. Found 0 Redis repository interfaces.
+26-05-24.20:10:10.198 [main            ] INFO  Version                - Redisson 3.44.0
+26-05-24.20:10:13.119 [redisson-netty-1-12] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:10:16.577 [redisson-netty-1-17] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:10:17.020 [redisson-netty-1-26] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:10:17.587 [main            ] INFO  OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+26-05-24.20:10:18.303 [main            ] INFO  RaffleServiceTest      - Started RaffleServiceTest in 11.401 seconds (process running for 12.704)
+26-05-24.20:10:18.306 [main            ] INFO  ActivityAutoConfiguration - 开始自动装配, 活动ID:[20001], 策略ID:[100001]
+26-05-24.20:10:18.355 [main            ] INFO  HikariDataSource       - HikariPool-1 - Starting...
+26-05-24.20:10:19.609 [main            ] INFO  HikariPool             - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@169d5567
+26-05-24.20:10:19.611 [main            ] INFO  HikariDataSource       - HikariPool-1 - Start completed.
+26-05-24.20:10:19.965 [main            ] INFO  ActivityAutoConfiguration - 活动装配完成
+26-05-24.20:10:20.903 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.20:10:20.955 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.20:10:20.956 [main            ] INFO  ActivityAutoConfiguration - 策略装配完成
+26-05-24.20:10:25.520 [main            ] WARN  ActivitySkuStockHandler - SKU:30001 库存不足 activityId:20001
+26-05-24.20:10:25.558 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
+26-05-24.20:10:41.434 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.
+26-05-24.20:15:35.233 [main            ] INFO  RaffleServiceTest      - Starting RaffleServiceTest using Java 21.0.9 with PID 2420 (started by asus in C:\Users\asus\Desktop\Big-Market\Big-Market-app)
+26-05-24.20:15:35.234 [main            ] INFO  RaffleServiceTest      - The following 1 profile is active: "dev"
+26-05-24.20:15:36.193 [main            ] INFO  RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+26-05-24.20:15:36.196 [main            ] INFO  RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+26-05-24.20:15:36.252 [main            ] INFO  RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 40 ms. Found 0 Redis repository interfaces.
+26-05-24.20:15:37.770 [main            ] INFO  Version                - Redisson 3.44.0
+26-05-24.20:15:38.118 [redisson-netty-1-4] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:15:38.417 [redisson-netty-1-13] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:15:39.020 [main            ] INFO  OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+26-05-24.20:15:39.715 [main            ] INFO  RaffleServiceTest      - Started RaffleServiceTest in 5.098 seconds (process running for 6.359)
+26-05-24.20:15:39.717 [main            ] INFO  ActivityAutoConfiguration - 开始自动装配, 活动ID:[20001], 策略ID:[100001]
+26-05-24.20:15:39.762 [main            ] INFO  HikariDataSource       - HikariPool-1 - Starting...
+26-05-24.20:15:40.481 [main            ] INFO  HikariPool             - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@71ce19ee
+26-05-24.20:15:40.484 [main            ] INFO  HikariDataSource       - HikariPool-1 - Start completed.
+26-05-24.20:15:40.797 [main            ] INFO  ActivityAutoConfiguration - 活动装配完成
+26-05-24.20:15:41.318 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.20:15:41.341 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.20:15:41.341 [main            ] INFO  ActivityAutoConfiguration - 策略装配完成
+26-05-24.20:15:46.896 [main            ] INFO  DefaultRaffleStrategy  - Stock 耗尽 strategyId:100001 awardId:106
+26-05-24.20:15:47.203 [main            ] INFO  RaffleService          - 抽奖完成 userId:user_001 strategyId:100001 awardId:105
+26-05-24.20:15:47.230 [main            ] INFO  RaffleServiceTest      - 抽奖测试结果：{"awardId":105,"awardType":4,"sort":5}
+26-05-24.20:15:47.265 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
+26-05-24.20:15:47.677 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.
+26-05-24.20:26:27.940 [main            ] INFO  RaffleServiceTest      - Starting RaffleServiceTest using Java 21.0.9 with PID 36444 (started by asus in C:\Users\asus\Desktop\Big-Market\Big-Market-app)
+26-05-24.20:26:27.942 [main            ] INFO  RaffleServiceTest      - The following 1 profile is active: "dev"
+26-05-24.20:26:28.857 [main            ] INFO  RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+26-05-24.20:26:28.862 [main            ] INFO  RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+26-05-24.20:26:28.928 [main            ] INFO  RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 49 ms. Found 0 Redis repository interfaces.
+26-05-24.20:26:30.503 [main            ] INFO  Version                - Redisson 3.44.0
+26-05-24.20:26:30.867 [redisson-netty-1-4] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:26:34.220 [redisson-netty-1-13] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:26:34.815 [main            ] INFO  OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+26-05-24.20:26:35.566 [main            ] INFO  RaffleServiceTest      - Started RaffleServiceTest in 8.201 seconds (process running for 9.432)
+26-05-24.20:26:35.569 [main            ] INFO  ActivityAutoConfiguration - 开始自动装配, 活动ID:[20001], 策略ID:[100001]
+26-05-24.20:26:35.631 [main            ] INFO  HikariDataSource       - HikariPool-1 - Starting...
+26-05-24.20:26:36.724 [main            ] INFO  HikariPool             - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@3c468360
+26-05-24.20:26:36.728 [main            ] INFO  HikariDataSource       - HikariPool-1 - Start completed.
+26-05-24.20:26:41.521 [main            ] INFO  ActivityAutoConfiguration - 活动装配完成
+26-05-24.20:26:42.011 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.20:26:42.035 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.20:26:42.035 [main            ] INFO  ActivityAutoConfiguration - 策略装配完成
+26-05-24.20:26:54.703 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.20:26:54.733 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.20:27:10.392 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
+26-05-24.20:27:20.395 [SpringApplicationShutdownHook] WARN  HikariPool             - Timed-out waiting for close connection executor to shutdown
+26-05-24.20:27:20.396 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.
+26-05-24.20:27:36.506 [main            ] INFO  RaffleServiceTest      - Starting RaffleServiceTest using Java 21.0.9 with PID 15784 (started by asus in C:\Users\asus\Desktop\Big-Market\Big-Market-app)
+26-05-24.20:27:36.507 [main            ] INFO  RaffleServiceTest      - The following 1 profile is active: "dev"
+26-05-24.20:27:37.509 [main            ] INFO  RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+26-05-24.20:27:37.512 [main            ] INFO  RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+26-05-24.20:27:37.573 [main            ] INFO  RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 43 ms. Found 0 Redis repository interfaces.
+26-05-24.20:27:39.234 [main            ] INFO  Version                - Redisson 3.44.0
+26-05-24.20:27:39.639 [redisson-netty-1-4] INFO  ConnectionsHolder      - 1 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:27:41.554 [redisson-netty-1-13] INFO  ConnectionsHolder      - 5 connections initialized for 159.75.79.79/159.75.79.79:16379
+26-05-24.20:27:42.138 [main            ] INFO  OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+26-05-24.20:27:42.820 [main            ] INFO  RaffleServiceTest      - Started RaffleServiceTest in 6.904 seconds (process running for 8.125)
+26-05-24.20:27:42.823 [main            ] INFO  ActivityAutoConfiguration - 开始自动装配, 活动ID:[20001], 策略ID:[100001]
+26-05-24.20:27:42.871 [main            ] INFO  HikariDataSource       - HikariPool-1 - Starting...
+26-05-24.20:27:43.687 [main            ] INFO  HikariPool             - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@45302e66
+26-05-24.20:27:43.689 [main            ] INFO  HikariDataSource       - HikariPool-1 - Start completed.
+26-05-24.20:27:43.973 [main            ] INFO  ActivityAutoConfiguration - 活动装配完成
+26-05-24.20:27:44.528 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.20:27:44.553 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.20:27:44.553 [main            ] INFO  ActivityAutoConfiguration - 策略装配完成
+26-05-24.20:27:52.588 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_5000 tableSize:6
+26-05-24.20:27:56.738 [main            ] INFO  StrategyArmory         - 权重分组区间表装配完成 strategyId:100001 groupId:weight_group_1000 tableSize:6
+26-05-24.20:28:00.094 [main            ] INFO  RaffleService          - 抽奖完成 userId:user_001 strategyId:100001 awardId:103
+26-05-24.20:28:00.122 [main            ] INFO  RaffleServiceTest      - 抽奖测试结果：{"awardId":103,"awardType":1,"sort":3}
+26-05-24.20:28:00.154 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown initiated...
+26-05-24.20:28:00.979 [SpringApplicationShutdownHook] INFO  HikariDataSource       - HikariPool-1 - Shutdown completed.

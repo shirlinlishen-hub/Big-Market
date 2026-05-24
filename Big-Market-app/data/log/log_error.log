@@ -375,3 +375,7 @@ Caused by: java.lang.NullPointerException: Cannot invoke "java.util.Map.entrySet
 26-05-24.16:58:21.597 [main            ] WARN  StrategyArmory         - 权重分组 awardRates 未配置，跳过 strategyId:100001 groupId:null
 26-05-24.17:04:53.203 [main            ] WARN  ActivitySkuStockHandler - SKU 库存不足 activityId:20001
 26-05-24.17:11:16.911 [main            ] WARN  ActivitySkuStockHandler - SKU 库存不足 activityId:20001
+26-05-24.19:51:36.006 [main            ] WARN  ActivitySkuStockHandler - SKU 库存不足 activityId:20001
+26-05-24.19:57:19.101 [main            ] WARN  ActivitySkuStockHandler - SKU:30001 库存不足 activityId:20001
+26-05-24.20:10:25.520 [main            ] WARN  ActivitySkuStockHandler - SKU:30001 库存不足 activityId:20001
+26-05-24.20:27:20.395 [SpringApplicationShutdownHook] WARN  HikariPool             - Timed-out waiting for close connection executor to shutdown

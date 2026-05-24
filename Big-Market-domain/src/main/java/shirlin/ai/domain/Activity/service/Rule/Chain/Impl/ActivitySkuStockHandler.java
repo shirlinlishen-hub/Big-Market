@@ -29,7 +29,7 @@ public class ActivitySkuStockHandler extends AbstractActivityChainHandler {
         Long skuId =  factor.getSkuId();
         boolean stockOk = activityRepository.deductActivitySkuStock(activityId,skuId);
         if (!stockOk) {
-            log.warn("SKU 库存不足 activityId:{}", activityId);
+            log.warn("SKU:{} 库存不足 activityId:{}",skuId, activityId);
             throw new AppException(ResponseCode.ACTIVITY_SKU_STOCK_EMPTY.getInfo());
         }
 
