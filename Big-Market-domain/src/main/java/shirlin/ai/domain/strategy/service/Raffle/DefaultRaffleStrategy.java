@@ -10,10 +10,7 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleLockConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
-import shirlin.ai.domain.strategy.service.Rule.Tree.IStrategyLogicFilterService;
-
-import java.util.Collections;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 
 /**
  * 默认抽奖策略
@@ -31,35 +28,7 @@ public class DefaultRaffleStrategy extends AbstrackRaffleStrategy {
     @Resource
     private IStrategyRepository strategyRepository;
 
-    // =====================================================================
-    // 前置规则：责任链
-    // =====================================================================
 
-    @Override
-    protected RuleFilterResultEntity doBeforeRaffleRuleFilter(RaffleFactorEntity factor) {
-
-        // 节点1：黑名单规则 — 命中则直接接管，不再往下走
-        IStrategyLogicFilterService blacklistFilter =
-                defaultLogicFactory.getFilter(RuleTypeVO.RULEBLACKLIST.getRuleBeanName());
-        RuleFilterResultEntity blacklistResult = blacklistFilter.filter(factor);
-        if (RuleFilterResultEntity.Type.TAKE_OVER.equals(blacklistResult.getType())) {
-            return blacklistResult;
-        }
-
-        // 节点2：权重规则 — 决定本次抽奖排除哪些奖品
-        IStrategyLogicFilterService weightFilter =
-                defaultLogicFactory.getFilter(RuleTypeVO.RULEWEIGHT.getRuleBeanName());
-        RuleFilterResultEntity weightResult = weightFilter.filter(factor);
-
-        // 节点3：默认规则 — 透传权重规则的排除集（未命中任何权重阈值时集合为空）
-        return RuleFilterResultEntity.builder()
-                .type(RuleFilterResultEntity.Type.ALLOW)
-                .excludeAwardIds(
-                        weightResult.getExcludeAwardIds() != null
-                                ? weightResult.getExcludeAwardIds()
-                                : Collections.emptySet())
-                .build();
-    }
 
     // =====================================================================
     // 后置规则：规则树  Lock → Stock → 兜底

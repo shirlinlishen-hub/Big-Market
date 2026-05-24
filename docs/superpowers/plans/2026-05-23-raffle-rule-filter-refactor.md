@@ -83,13 +83,13 @@ git commit -m "build: add spring-boot-starter-test to domain module"
 - [ ] **Step 1: 替换 AbstractRuleFilterService 全部内容**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree;
 
 import jakarta.annotation.Resource;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 import shirlin.ai.types.design.tree.AbstractMultiThreadStrategyRouter;
 import shirlin.ai.types.design.tree.StrategyHandler;
 
@@ -98,9 +98,9 @@ import java.util.concurrent.TimeoutException;
 
 public abstract class AbstractRuleFilterService
         extends AbstractMultiThreadStrategyRouter<
-                RaffleFactorEntity,
-                DefaultLogicFactory.DynamicContext,
-                RuleFilterResultEntity> {
+        RaffleFactorEntity,
+        DefaultLogicFactory.DynamicContext,
+        RuleFilterResultEntity> {
 
     @Resource
     protected IStrategyRepository strategyRepository;
@@ -112,7 +112,7 @@ public abstract class AbstractRuleFilterService
 
     @Override
     protected void multiThread(RaffleFactorEntity factory,
-            DefaultLogicFactory.DynamicContext ctx)
+                               DefaultLogicFactory.DynamicContext ctx)
             throws ExecutionException, InterruptedException, TimeoutException {
         // 无多线程预加载需求
     }
@@ -120,7 +120,7 @@ public abstract class AbstractRuleFilterService
     @Override
     public StrategyHandler<RaffleFactorEntity, DefaultLogicFactory.DynamicContext,
             RuleFilterResultEntity> get(RaffleFactorEntity factory,
-            DefaultLogicFactory.DynamicContext ctx) {
+                                        DefaultLogicFactory.DynamicContext ctx) {
         return null; // 不使用 router() 模式
     }
 
@@ -163,7 +163,7 @@ git commit -m "refactor: fix AbstractRuleFilterService generic shadowing and add
 - [ ] **Step 1: 替换 DefaultLogicFactory 全部内容**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree.Factory;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory;
 
 import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
@@ -175,8 +175,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
-import shirlin.ai.domain.strategy.service.Rule.Tree.AbstractRuleFilterService;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Node.RuleLockFilterNode;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.AbstractRuleFilterService;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node.RuleLockFilterNode;
 import shirlin.ai.types.design.tree.StrategyHandler;
 import shirlin.ai.types.exception.AppException;
 
@@ -242,7 +242,7 @@ git commit -m "fix: DefaultLogicFactory DynamicContext add awardId, fix strategy
 - [ ] **Step 1: 创建测试文件**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -254,7 +254,7 @@ import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -334,7 +334,7 @@ Expected: 编译失败或 FAIL（`doApply` 签名不对）
 - [ ] **Step 3: 替换 RuleLockFilterNode 实现**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node;
 
 import com.alibaba.fastjson2.JSON;
 import lombok.extern.slf4j.Slf4j;
@@ -344,8 +344,8 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleLockConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.Tree.AbstractRuleFilterService;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.AbstractRuleFilterService;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 
 @Slf4j
 @Service("ruleLockFilterNode")
@@ -353,7 +353,7 @@ public class RuleLockFilterNode extends AbstractRuleFilterService {
 
     @Override
     protected RuleFilterResultEntity doApply(RaffleFactorEntity factory,
-            DefaultLogicFactory.DynamicContext ctx) throws Exception {
+                                             DefaultLogicFactory.DynamicContext ctx) throws Exception {
 
         StrategyRuleEntity rule = strategyRepository.queryStrategyRuleByModel(
                 factory.getStrategyId(), RuleTypeVO.RULELOCK.getRuleModel());
@@ -404,7 +404,7 @@ git commit -m "fix: RuleLockFilterNode implement real lock logic with ctx.awardI
 - [ ] **Step 1: 创建测试文件**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -415,7 +415,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -469,14 +469,14 @@ Expected: 编译失败或 FAIL（`doFilter` 方法不存在）
 - [ ] **Step 3: 替换 RuleAwardStockFilterNode 实现**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
-import shirlin.ai.domain.strategy.service.Rule.Tree.AbstractRuleFilterService;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.AbstractRuleFilterService;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 
 @Slf4j
 @Service("ruleAwardStockFilterNode")
@@ -484,7 +484,7 @@ public class RuleAwardStockFilterNode extends AbstractRuleFilterService {
 
     @Override
     protected RuleFilterResultEntity doApply(RaffleFactorEntity factory,
-            DefaultLogicFactory.DynamicContext ctx) throws Exception {
+                                             DefaultLogicFactory.DynamicContext ctx) throws Exception {
 
         boolean stockOk = strategyRepository.deductStock(
                 factory.getStrategyId(), ctx.getAwardId());
@@ -525,7 +525,7 @@ git commit -m "fix: RuleAwardStockFilterNode implement real stock deduction via 
 - [ ] **Step 1: 创建测试文件**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -537,7 +537,7 @@ import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -606,7 +606,7 @@ Expected: 编译失败或 FAIL（`doFilter` 签名错误）
 - [ ] **Step 3: 替换 RuleLuckFilterNode 实现**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Tree.Node;
+package shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node;
 
 import com.alibaba.fastjson2.JSON;
 import lombok.extern.slf4j.Slf4j;
@@ -616,8 +616,8 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleLuckConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.Tree.AbstractRuleFilterService;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.AbstractRuleFilterService;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
 
 @Slf4j
 @Service("ruleLuckFilterNode")
@@ -625,7 +625,7 @@ public class RuleLuckFilterNode extends AbstractRuleFilterService {
 
     @Override
     protected RuleFilterResultEntity doApply(RaffleFactorEntity factory,
-            DefaultLogicFactory.DynamicContext ctx) throws Exception {
+                                             DefaultLogicFactory.DynamicContext ctx) throws Exception {
 
         StrategyRuleEntity rule = strategyRepository.queryStrategyRuleByModel(
                 factory.getStrategyId(), RuleTypeVO.RULELUCK.getRuleModel());
@@ -676,7 +676,7 @@ git commit -m "fix: RuleLuckFilterNode rename doFilter to doApply"
 - [ ] **Step 1: 替换 StrategyPreRuleFilterFactory 全部内容**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Chain.Factory;
+package shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Factory;
 
 import cn.bugstack.wrench.design.framework.link.model2.LinkArmory;
 import jakarta.annotation.Resource;
@@ -689,8 +689,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
-import shirlin.ai.domain.strategy.service.Rule.Chain.Filter.RuleBlacklistFilter;
-import shirlin.ai.domain.strategy.service.Rule.Chain.Filter.RuleWeightFilter;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Filter.RuleBlacklistFilter;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Filter.RuleWeightFilter;
 import shirlin.ai.types.design.link.model2.chain.BusinessLinkedList;
 
 import java.util.HashSet;
@@ -755,7 +755,7 @@ BusinessLinkedList 在第一个非 null 结果时停链。ALLOW 必须返回 nul
 - [ ] **Step 1: 创建 RuleBlacklistFilterTest**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Chain.Filter;
+package shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Filter;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -767,7 +767,7 @@ import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
-import shirlin.ai.domain.strategy.service.Rule.Chain.Factory.StrategyPreRuleFilterFactory;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Factory.StrategyPreRuleFilterFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -824,7 +824,7 @@ class RuleBlacklistFilterTest {
 - [ ] **Step 2: 创建 RuleWeightFilterTest**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Chain.Filter;
+package shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Filter;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -836,7 +836,7 @@ import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
-import shirlin.ai.domain.strategy.service.Rule.Chain.Factory.StrategyPreRuleFilterFactory;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Factory.StrategyPreRuleFilterFactory;
 
 import java.util.Arrays;
 
@@ -915,7 +915,7 @@ Expected: FAIL（ALLOW 分支当前返回非 null，导致链提前终止）
 - [ ] **Step 4: 修改 RuleBlacklistFilter — ALLOW 分支改返回 null**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Chain.Filter;
+package shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Filter;
 
 import com.alibaba.fastjson2.JSON;
 import jakarta.annotation.Resource;
@@ -927,7 +927,7 @@ import shirlin.ai.domain.strategy.model.entity.RuleBlacklistConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.Chain.Factory.StrategyPreRuleFilterFactory;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Factory.StrategyPreRuleFilterFactory;
 import shirlin.ai.types.design.link.model2.handler.ILogicHandler;
 
 @Slf4j
@@ -940,7 +940,7 @@ public class RuleBlacklistFilter implements ILogicHandler<RaffleFactorEntity,
 
     @Override
     public RuleFilterResultEntity apply(RaffleFactorEntity factory,
-            StrategyPreRuleFilterFactory.DynamicContext dynamicContext) throws Exception {
+                                        StrategyPreRuleFilterFactory.DynamicContext dynamicContext) throws Exception {
 
         StrategyRuleEntity rule = strategyRepository.queryStrategyRuleByModel(
                 factory.getStrategyId(), RuleTypeVO.RULEBLACKLIST.getRuleModel());
@@ -966,7 +966,7 @@ public class RuleBlacklistFilter implements ILogicHandler<RaffleFactorEntity,
 - [ ] **Step 5: 修改 RuleWeightFilter — 写入 ctx，始终返回 null**
 
 ```java
-package shirlin.ai.domain.strategy.service.Rule.Chain.Filter;
+package shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Filter;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
@@ -979,7 +979,7 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
-import shirlin.ai.domain.strategy.service.Rule.Chain.Factory.StrategyPreRuleFilterFactory;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Factory.StrategyPreRuleFilterFactory;
 import shirlin.ai.types.design.link.model2.handler.ILogicHandler;
 
 import java.util.*;
@@ -994,7 +994,7 @@ public class RuleWeightFilter implements ILogicHandler<RaffleFactorEntity,
 
     @Override
     public RuleFilterResultEntity apply(RaffleFactorEntity factory,
-            StrategyPreRuleFilterFactory.DynamicContext ctx) throws Exception {
+                                        StrategyPreRuleFilterFactory.DynamicContext ctx) throws Exception {
 
         StrategyRuleEntity rule = strategyRepository.queryStrategyRuleByModel(
                 factory.getStrategyId(), RuleTypeVO.RULEWEIGHT.getRuleModel());
@@ -1004,7 +1004,8 @@ public class RuleWeightFilter implements ILogicHandler<RaffleFactorEntity,
         }
 
         Map<String, List<Integer>> weightMap = JSON.parseObject(
-                rule.getRuleValue(), new TypeReference<Map<String, List<Integer>>>() {});
+                rule.getRuleValue(), new TypeReference<Map<String, List<Integer>>>() {
+                });
         int userWeightValue = strategyRepository.queryUserWeightValue(
                 factory.getUserId(), factory.getStrategyId());
 
@@ -1094,7 +1095,7 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
 import shirlin.ai.domain.strategy.service.IRaffleStrategy;
 import shirlin.ai.domain.strategy.service.IStrategyArmory;
-import shirlin.ai.domain.strategy.service.Rule.Chain.Factory.StrategyPreRuleFilterFactory;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Factory.StrategyPreRuleFilterFactory;
 import shirlin.ai.types.design.link.model2.chain.BusinessLinkedList;
 
 import java.util.Collections;
@@ -1212,10 +1213,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Factory.DefaultLogicFactory;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Node.RuleAwardStockFilterNode;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Node.RuleLockFilterNode;
-import shirlin.ai.domain.strategy.service.Rule.Tree.Node.RuleLuckFilterNode;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Factory.DefaultLogicFactory;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node.RuleAwardStockFilterNode;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node.RuleLockFilterNode;
+import shirlin.ai.domain.strategy.service.Rule.PostRaffleRuleTree.Node.RuleLuckFilterNode;
 
 @Slf4j
 @Service

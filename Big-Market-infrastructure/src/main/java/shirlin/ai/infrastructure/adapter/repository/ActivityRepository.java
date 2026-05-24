@@ -1,13 +1,19 @@
 package shirlin.ai.infrastructure.adapter.repository;
 
 import jakarta.annotation.Resource;
+import org.redisson.api.RBlockingQueue;
+import org.redisson.api.RDelayedQueue;
 import org.springframework.stereotype.Repository;
 import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
+import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
+import shirlin.ai.domain.Activity.model.entity.ActivitySkuEntity;
 import shirlin.ai.infrastructure.dao.IActivityAccountDao;
 import shirlin.ai.infrastructure.dao.IActivityDao;
+import shirlin.ai.infrastructure.dao.IActivitySkuDao;
 import shirlin.ai.infrastructure.dao.IUserAwardRecordDao;
 import shirlin.ai.infrastructure.dao.po.Activity;
 import shirlin.ai.infrastructure.dao.po.ActivityAccount;
+import shirlin.ai.infrastructure.dao.po.ActivitySku;
 import shirlin.ai.infrastructure.dao.po.UserAwardRecord;
 import shirlin.ai.infrastructure.redis.IRedisService;
 import shirlin.ai.types.enums.ResponseCode;
@@ -17,12 +23,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Repository
 public class ActivityRepository implements IActivityRepository {
 
+    private static final String ACTIVITY_KEY = "big_market:activity:activity";
     private static final String SKU_STOCK_KEY       = "big_market:activity:sku:stock:";
     private static final String SKU_STOCK_LOCK_KEY  = "big_market:activity:sku:stock:lock:";
     private static final String SKU_STOCK_QUEUE_KEY = "big_market:activity:sku:stock:queue";
@@ -33,6 +40,9 @@ public class ActivityRepository implements IActivityRepository {
     private IActivityDao activityDao;
 
     @Resource
+    private IActivitySkuDao activitySkuDao;
+
+    @Resource
     private IActivityAccountDao activityAccountDao;
 
     @Resource
@@ -41,20 +51,17 @@ public class ActivityRepository implements IActivityRepository {
     @Resource
     private IRedisService redisService;
 
-    private Long queryActivityId(Long strategyId) {
-        Activity activity = activityDao.selectByStrategyId(strategyId);
+    private Long queryActivityId(Long activityId) {
+        Activity activity = activityDao.selectByStrategyId(activityId);
         if (activity == null) {
-            // 理想错误码应为 ACTIVITY_NOT_EXISTS（活动记录不存在），但枚举中暂未定义该值。
-            // ResponseCode 中最接近的语义是 STRATEGY_NOT_ACTIVE（0003，"活动未开始或已下线"），
-            // 当前以其代替；如后续新增 ACTIVITY_NOT_EXISTS 枚举值，请同步替换此处。
-            throw new AppException(ResponseCode.STRATEGY_NOT_ACTIVE.getInfo());
+            throw new AppException(ResponseCode.ACTIVITY_NOT_EXISTS.getInfo());
         }
         return activity.getActivityId();
     }
 
     @Override
-    public boolean deductActivitySkuStock(Long strategyId) {
-        String stockKey = SKU_STOCK_KEY + strategyId;
+    public boolean deductActivitySkuStock(Long activityId,Long skuId) {
+        String stockKey = SKU_STOCK_KEY + activityId + skuId;
 
         if (!redisService.isExists(stockKey)) {
             return true;
@@ -66,26 +73,39 @@ public class ActivityRepository implements IActivityRepository {
             return false;
         }
 
-        String lockKey = SKU_STOCK_LOCK_KEY + strategyId + ":" + remaining;
+        String lockKey = SKU_STOCK_LOCK_KEY + activityId + skuId + ":" + remaining;
         boolean locked = redisService.setNx(lockKey);
         if (!locked) {
             redisService.incrBy(stockKey, 1L);
             return false;
         }
 
-        org.redisson.api.RBlockingQueue<Long> blockingQueue =
-                redisService.getBlockingQueue(SKU_STOCK_QUEUE_KEY);
-        org.redisson.api.RDelayedQueue<Long> delayedQueue =
+        RBlockingQueue<Long> blockingQueue =
+                redisService.getBlockingQueue(SKU_STOCK_QUEUE_KEY + activityId + skuId);
+        RDelayedQueue<Long> delayedQueue =
                 redisService.getDelayedQueue(blockingQueue);
-        delayedQueue.offer(strategyId, 3, TimeUnit.SECONDS);
+        delayedQueue.offer(activityId, 3, TimeUnit.SECONDS);
 
         return true;
     }
 
     @Override
-    public void cacheActivitySkuStock(Long strategyId, Long totalStock) {
-        redisService.setAtomicLong(SKU_STOCK_KEY + strategyId, totalStock);
+    public void cacheActivitySkuStock(Long activityId,Long skuId, Long totalStock) {
+        redisService.setAtomicLong(SKU_STOCK_KEY + activityId + skuId, totalStock);
     }
+
+
+    @Override
+    public void cacheActivity(ActivityEntity activity) {
+        redisService.setValue(ACTIVITY_KEY + activity.getActivityId(), activity);
+    }
+
+    @Override
+    public ActivityEntity cacheGetActivity(Long activityId) {
+        return redisService.getValue(ACTIVITY_KEY + activityId);
+
+    }
+
 
     @Override
     public Long createUserRaffleOrder(String userId, Long strategyId) {
@@ -107,15 +127,13 @@ public class ActivityRepository implements IActivityRepository {
     }
 
     @Override
-    public boolean deductUserTotalQuota(String userId, Long strategyId) {
-        Long activityId = queryActivityId(strategyId);
+    public boolean deductUserTotalQuota(String userId, Long activityId) {
         int affected = activityAccountDao.deductTotalSurplus(userId, activityId);
         return affected > 0;
     }
 
     @Override
-    public boolean deductUserMonthlyQuota(String userId, Long strategyId) {
-        Long activityId = queryActivityId(strategyId);
+    public boolean deductUserMonthlyQuota(String userId, Long activityId) {
 
         String yearMonth = YearMonth.now().toString();
         String key = MONTHLY_QUOTA_KEY + userId + ":" + activityId + ":" + yearMonth;
@@ -148,8 +166,7 @@ public class ActivityRepository implements IActivityRepository {
     }
 
     @Override
-    public boolean deductUserDailyQuota(String userId, Long strategyId) {
-        Long activityId = queryActivityId(strategyId);
+    public boolean deductUserDailyQuota(String userId, Long activityId) {
 
         String today = LocalDate.now().toString();
         String key = DAILY_QUOTA_KEY + userId + ":" + activityId + ":" + today;
@@ -179,4 +196,37 @@ public class ActivityRepository implements IActivityRepository {
         }
         return true;
     }
+
+    @Override
+    public ActivityEntity queryActivityById(Long activityId) {
+        Activity res = activityDao.selectByActivityId(activityId);
+        return    ActivityEntity.builder()
+                      .activityId(res.getActivityId())
+                      .strategyId(res.getStrategyId())
+                      .status(res.getStatus())
+                      .beginTime(res.getBeginTime())
+                      .endTime(res.getEndTime())
+                      .build();
+    }
+
+    @Override
+    public List<ActivitySkuEntity> querySkuByActivityId(Long activityId) {
+        List<ActivitySku> res = activitySkuDao.selectByActivityId(activityId);
+        List<ActivitySkuEntity> ans = new ArrayList<>();
+        for (ActivitySku sku : res) {
+            ActivitySkuEntity req = ActivitySkuEntity.builder()
+                        .skuId(sku.getSkuId())
+                        .activityId(sku.getActivityId())
+                        .skuType(sku.getSkuType())
+                        .pointsCost(sku.getPointsCost())
+                        .activityCountId(sku.getActivityCountId())
+                        .stockCount(sku.getStockCount())
+                        .stockSurplus(sku.getStockSurplus())
+                        .status(sku.getStatus())
+                        .build();
+            ans.add(req);
+        }
+        return ans;
+    }
+
 }

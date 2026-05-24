@@ -16,7 +16,9 @@ public enum ResponseCode {
     DRAW_COUNT_NOT_ENOUGH("0004", "抽奖次数不足"),
     ACTIVITY_EXPIRED("0005", "活动已结束"),
     USER_IN_BLACKLIST("0006", "用户已被禁止参与"),
-    ACTIVITY_SKU_STOCK_EMPTY("0007", "活动库存已耗尽")
+    ACTIVITY_SKU_STOCK_EMPTY("0007", "活动库存已耗尽"),
+    ACTIVITY_NOT_EXISTS("0008","活动未开始或已下线")
+
     ;
 
     private String code;

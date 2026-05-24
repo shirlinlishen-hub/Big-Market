@@ -5,6 +5,6 @@ import shirlin.ai.domain.strategy.model.entity.RaffleResultEntity;
 
 public interface IRaffleStrategy {
 
-    RaffleResultEntity performRaffle(RaffleFactorEntity factor);
+    RaffleResultEntity performRaffle(RaffleFactorEntity factor) throws Exception;
 
 }

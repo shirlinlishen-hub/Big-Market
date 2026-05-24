@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IUserAwardRecordDao">
+
+    <resultMap id="BaseResultMap" type="shirlin.ai.infrastructure.dao.po.UserAwardRecord">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="strategy_id" property="strategyId" />
+        <result column="award_id" property="awardId" />
+        <result column="award_type" property="awardType" />
+        <result column="award_content" property="awardContent" />
+        <result column="award_state" property="awardState" />
+        <result column="draw_time" property="drawTime" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, strategy_id, award_id, award_type, award_content, award_state,
+        draw_time, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.UserAwardRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_award_record (user_id, strategy_id, award_id, award_type, award_content,
+                                       award_state, draw_time, create_time, update_time)
+        VALUES (#{userId}, #{strategyId}, #{awardId}, #{awardType}, #{awardContent},
+                #{awardState}, #{drawTime}, NOW(), NOW())
+    </insert>
+
+    <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.UserAwardRecord">
+        UPDATE user_award_record
+        SET user_id = #{userId},
+            strategy_id = #{strategyId},
+            award_id = #{awardId},
+            award_type = #{awardType},
+            award_content = #{awardContent},
+            award_state = #{awardState},
+            draw_time = #{drawTime},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM user_award_record WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_award_record WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserIdAndStrategyId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_award_record
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+        ORDER BY draw_time DESC
+    </select>
+
+    <select id="selectByUserId" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_award_record
+        WHERE user_id = #{userId} ORDER BY draw_time DESC
+    </select>
+
+    <update id="updateAwardState">
+        UPDATE user_award_record SET award_state = #{awardState}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <select id="selectByAwardState" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_award_record WHERE award_state = #{awardState}
+    </select>
+
+    <select id="selectByTimeRange" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_award_record
+        WHERE draw_time BETWEEN #{startTime} AND #{endTime}
+        ORDER BY draw_time DESC
+    </select>
+
+    <select id="countByUserIdAndStrategyId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM user_award_record
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </select>
+
+    <!-- 阶段一事务：创建参与订单（state=0 占位，awardId=0 抽奖后回填） -->
+    <insert id="insertOrder" parameterType="shirlin.ai.infrastructure.dao.po.UserAwardRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_award_record (user_id, strategy_id, award_id, award_type, award_content,
+                                       award_state, draw_time, create_time, update_time)
+        VALUES (#{userId}, #{strategyId}, 0, 0, '',
+                0, NOW(), NOW(), NOW())
+    </insert>
+
+    <!-- 阶段一事务：回填抽奖结果，更新 awardId 和 state -->
+    <update id="updateOrderResult">
+        UPDATE user_award_record
+        SET award_id    = #{awardId},
+            award_type  = #{awardType},
+            award_state = 1,
+            update_time = NOW()
+        WHERE id = #{orderId}
+    </update>
+
+</mapper>

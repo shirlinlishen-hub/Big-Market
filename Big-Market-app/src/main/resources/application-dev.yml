@@ -12,6 +12,13 @@ thread:
         block-queue-size: 5000
         policy: CallerRunsPolicy
 
+#活动/策略配置
+activity:
+  auto-config:
+    enabled: true
+    activity-ids: 20001
+    strategy-ids: 100001
+
 # 数据库配置；启动时配置数据库资源信息
 spring:
   datasource:
@@ -29,6 +36,8 @@ spring:
     connection-timeout: 30000 #数据库连接超时时间,默认30秒，即30000
     connection-test-query: SELECT 1
   type: com.zaxxer.hikari.HikariDataSource
+
+
 
 # MyBatis 配置【如需使用记得打开】
 mybatis:

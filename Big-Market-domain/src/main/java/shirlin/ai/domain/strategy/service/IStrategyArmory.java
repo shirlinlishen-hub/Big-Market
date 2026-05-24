@@ -25,5 +25,6 @@ public interface IStrategyArmory {
 
     Integer getRandomAwardId(Long strategyId, Set<Integer> excludeAwardIds);
 
+    Integer getRandomAwardId(Long strategyId, String weightGroupId);
 
 }

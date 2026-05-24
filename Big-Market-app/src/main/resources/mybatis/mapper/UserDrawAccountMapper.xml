@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IUserDrawAccountDao">
+
+    <resultMap id="BaseResultMap" type="shirlin.ai.infrastructure.dao.po.UserDrawAccount">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="strategy_id" property="strategyId" />
+        <result column="total_draw_count" property="totalDrawCount" />
+        <result column="used_draw_count" property="usedDrawCount" />
+        <result column="remaining_draw_count" property="remainingDrawCount" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, strategy_id, total_draw_count, used_draw_count, remaining_draw_count, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.UserDrawAccount" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_draw_account (user_id, strategy_id, total_draw_count, used_draw_count, remaining_draw_count, create_time, update_time)
+        VALUES (#{userId}, #{strategyId}, #{totalDrawCount}, #{usedDrawCount}, #{remainingDrawCount}, NOW(), NOW())
+    </insert>
+
+    <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.UserDrawAccount">
+        UPDATE user_draw_account
+        SET user_id = #{userId},
+            strategy_id = #{strategyId},
+            total_draw_count = #{totalDrawCount},
+            used_draw_count = #{usedDrawCount},
+            remaining_draw_count = #{remainingDrawCount},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM user_draw_account WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_draw_account WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserIdAndStrategyId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_draw_account
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </select>
+
+    <update id="updateUsedCount">
+        UPDATE user_draw_account
+        SET used_draw_count = #{usedCount},
+            remaining_draw_count = #{remainingCount},
+            update_time = NOW()
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </update>
+
+    <update id="updateTotalCount">
+        UPDATE user_draw_account
+        SET total_draw_count = #{totalCount},
+            remaining_draw_count = #{remainingCount},
+            update_time = NOW()
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </update>
+
+    <!--
+      乐观扣减总额度：WHERE remaining_draw_count > 0 保证并发安全，
+      返回影响行数 1=成功 0=额度不足
+    -->
+    <update id="deductRemainingCount">
+        UPDATE user_draw_account
+        SET used_draw_count      = used_draw_count + 1,
+            remaining_draw_count = remaining_draw_count - 1,
+            update_time          = NOW()
+        WHERE user_id = #{userId}
+          AND strategy_id = #{strategyId}
+          AND remaining_draw_count > 0
+    </update>
+
+</mapper>

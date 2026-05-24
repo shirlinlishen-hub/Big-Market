@@ -27,4 +27,5 @@ public interface IActivitySkuDao {
 
     /** 乐观扣减 SKU 剩余库存；返回影响行数 1=成功 0=库存不足 */
     int deductStockSurplus(@Param("skuId") Long skuId);
+
 }

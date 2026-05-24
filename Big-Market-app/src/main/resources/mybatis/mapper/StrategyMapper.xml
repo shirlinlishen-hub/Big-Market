@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IStrategyDao">
+
+    <resultMap id="BaseResultMap" type="shirlin.ai.infrastructure.dao.po.Strategy">
+        <id column="id" property="id" />
+        <result column="strategy_id" property="strategyId" />
+        <result column="strategy_name" property="strategyName" />
+        <result column="strategy_desc" property="strategyDesc" />
+        <result column="total_probability" property="totalProbability" />
+        <result column="probability_precision" property="probabilityPrecision" />
+        <result column="free_draw_count" property="freeDrawCount" />
+        <result column="points_per_draw" property="pointsPerDraw" />
+        <result column="status" property="status" />
+        <result column="begin_time" property="beginTime" />
+        <result column="end_time" property="endTime" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, strategy_id, strategy_name, strategy_desc, total_probability, probability_precision,
+        free_draw_count, points_per_draw, status, begin_time, end_time, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.Strategy" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO strategy (strategy_id, strategy_name, strategy_desc, total_probability, probability_precision,
+                             free_draw_count, points_per_draw, status, begin_time, end_time, create_time, update_time)
+        VALUES (#{strategyId}, #{strategyName}, #{strategyDesc}, #{totalProbability}, #{probabilityPrecision},
+                #{freeDrawCount}, #{pointsPerDraw}, #{status}, #{beginTime}, #{endTime}, NOW(), NOW())
+    </insert>
+
+    <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.Strategy">
+        UPDATE strategy
+        SET strategy_name = #{strategyName},
+            strategy_desc = #{strategyDesc},
+            total_probability = #{totalProbability},
+            probability_precision = #{probabilityPrecision},
+            free_draw_count = #{freeDrawCount},
+            points_per_draw = #{pointsPerDraw},
+            status = #{status},
+            begin_time = #{beginTime},
+            end_time = #{endTime},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM strategy WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM strategy WHERE id = #{id}
+    </select>
+
+    <select id="selectByStrategyId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM strategy WHERE strategy_id = #{strategyId}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM strategy
+    </select>
+
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM strategy WHERE status = #{status}
+    </select>
+
+</mapper>

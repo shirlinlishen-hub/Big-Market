@@ -1,5 +1,11 @@
 package shirlin.ai.domain.Activity.adapter.repository;
 
+import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
+import shirlin.ai.domain.Activity.model.entity.ActivitySkuEntity;
+
+import java.util.List;
+import java.util.Map;
+
 public interface IActivityRepository {
 
     // ---- 活动 SKU 库存（责任链 Node2） ----
@@ -8,12 +14,27 @@ public interface IActivityRepository {
      * 扣减活动 SKU 库存
      * 流程：decr → <0 则补偿返回 false；≥0 则 setnx 锁定序号 + 写延迟队列
      */
-    boolean deductActivitySkuStock(Long strategyId);
+    boolean deductActivitySkuStock(Long activityId,Long skuId);
 
     /**
      * 活动上线时将 SKU 总库存写入 Redis
      */
-    void cacheActivitySkuStock(Long strategyId, Long totalStock);
+    void cacheActivitySkuStock(Long activityId,Long skuId,Long totalStock);
+
+
+    /**
+     * 活动上线将Activity配置信息写入Redis
+     * @param activity
+     */
+    void cacheActivity(ActivityEntity activity);
+
+
+    /**
+     * 从缓存中获取活动配置信息
+     * @param activityId
+     * @return
+     */
+    ActivityEntity cacheGetActivity(Long activityId);
 
     // ---- 参与订单（Phase 2 事务内） ----
 
@@ -51,4 +72,21 @@ public interface IActivityRepository {
      * @return true 成功，false 日额度已耗尽
      */
     boolean deductUserDailyQuota(String userId, Long strategyId);
+
+
+    /**
+     * 查找Activity配置信息
+     * @param activityId
+     * @return
+     */
+    ActivityEntity queryActivityById(Long activityId);
+
+    /**
+     * 查找活动的全部Sku信息
+     *
+     * @param activityId
+     * @return
+     */
+    List<ActivitySkuEntity> querySkuByActivityId(Long activityId);
+
 }

@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class RuleLuckConfigEntity {
 
-    private int luckCount;
-    private int awardId;
+    /** 对应 DB JSON luck_threshold */
+    private int luckThreshold;
+
+    /** 对应 DB JSON luck_award_id */
+    private int luckAwardId;
 }

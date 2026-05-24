@@ -11,11 +11,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 /**
- * 抽奖因子，入参
+ * 活动参与因子，入参
  */
-public class RaffleFactorEntity {
+public class ActivityFactorEntity {
 
     private String userId;
-    private String activityId;
+    private Long activityId;
     private Long strategyId;
+    private Long skuId;
 }

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IActivitySkuDao">
+
+    <resultMap id="BaseResultMap" type="shirlin.ai.infrastructure.dao.po.ActivitySku">
+        <id column="id" property="id" />
+        <result column="sku_id" property="skuId" />
+        <result column="activity_id" property="activityId" />
+        <result column="sku_name" property="skuName" />
+        <result column="sku_type" property="skuType" />
+        <result column="points_cost" property="pointsCost" />
+        <result column="activity_count_id" property="activityCountId" />
+        <result column="stock_count" property="stockCount" />
+        <result column="stock_surplus" property="stockSurplus" />
+        <result column="status" property="status" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, sku_id, activity_id, sku_name, sku_type, points_cost, activity_count_id,
+        stock_count, stock_surplus, status, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.ActivitySku" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO activity_sku (sku_id, activity_id, sku_name, sku_type, points_cost, activity_count_id,
+                                  stock_count, stock_surplus, status, create_time, update_time)
+        VALUES (#{skuId}, #{activityId}, #{skuName}, #{skuType}, #{pointsCost}, #{activityCountId},
+                #{stockCount}, #{stockSurplus}, #{status}, NOW(), NOW())
+    </insert>
+
+    <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.ActivitySku">
+        UPDATE activity_sku
+        SET sku_id = #{skuId},
+            activity_id = #{activityId},
+            sku_name = #{skuName},
+            sku_type = #{skuType},
+            points_cost = #{pointsCost},
+            activity_count_id = #{activityCountId},
+            stock_count = #{stockCount},
+            stock_surplus = #{stockSurplus},
+            status = #{status},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM activity_sku WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_sku WHERE id = #{id}
+    </select>
+
+    <select id="selectBySkuId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_sku WHERE sku_id = #{skuId}
+    </select>
+
+    <select id="selectByActivityId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_sku WHERE activity_id = #{activityId}
+    </select>
+
+    <select id="selectByActivityIdAndStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_sku
+        WHERE activity_id = #{activityId} AND status = #{status}
+    </select>
+
+    <update id="updateStockSurplus">
+        UPDATE activity_sku SET stock_surplus = #{stockSurplus}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="deductStockSurplus">
+        UPDATE activity_sku
+        SET stock_surplus = stock_surplus - 1,
+            update_time = NOW()
+        WHERE sku_id = #{skuId}
+          AND stock_surplus > 0
+    </update>
+
+</mapper>

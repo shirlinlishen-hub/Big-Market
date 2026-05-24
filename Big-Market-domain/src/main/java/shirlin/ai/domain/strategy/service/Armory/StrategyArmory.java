@@ -1,14 +1,19 @@
 package shirlin.ai.domain.strategy.service.Armory;
 
+import com.alibaba.fastjson2.JSON;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.AwardRateRange;
+import shirlin.ai.domain.strategy.model.entity.RuleWeightConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyEntity;
+import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
+import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
 import shirlin.ai.domain.strategy.service.IStrategyArmory;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.*;
 
@@ -54,6 +59,36 @@ public class StrategyArmory  implements IStrategyArmory {
         for (StrategyAwardEntity award : awards) {
             strategyRepository.cacheStrategyAwardStock(StrategyId, award.getAwardId(), award.getAwardSurplus());
         }
+
+        //6. 若配置了权重规则，按各分组的概率覆盖构建专属区间表
+        StrategyRuleEntity weightRule = strategyRepository.queryStrategyRuleByModel(
+                StrategyId, RuleTypeVO.RULEWEIGHT.getRuleModel());
+
+        //存在权重配置
+        if (weightRule != null && weightRule.getRuleValue() != null) {
+            RuleWeightConfigEntity weightConfig = JSON.parseObject(weightRule.getRuleValue(), RuleWeightConfigEntity.class);
+            for (RuleWeightConfigEntity.WeightGroup group : weightConfig.getGroups()) {
+                if (group.getAwardRates() == null || group.getAwardRates().isEmpty()) {
+                    log.warn("权重分组 awardRates 未配置，跳过 strategyId:{} groupId:{}", StrategyId, group.getGroupId());
+                    continue;
+                }
+                List<AwardRateRange> weightTable = buildRangeTableFromRates(group.getAwardRates(), precision);
+                strategyRepository.storeWeightRangeTable(StrategyId, group.getGroupId(), weightTable);
+                log.info("权重分组区间表装配完成 strategyId:{} groupId:{} tableSize:{}", StrategyId, group.getGroupId(), weightTable.size());
+            }
+        }
+    }
+
+    private List<AwardRateRange> buildRangeTableFromRates(Map<Integer, BigDecimal> awardRates, int precision) {
+        if (awardRates == null || awardRates.isEmpty()) return new ArrayList<>();
+        List<AwardRateRange> table = new ArrayList<>();
+        int currentStart = 0;
+        for (Map.Entry<Integer, BigDecimal> entry : awardRates.entrySet()) {
+            int rangeWidth = (int) (entry.getValue().doubleValue() * precision);
+            table.add(new AwardRateRange(entry.getKey(), currentStart, currentStart + rangeWidth));
+            currentStart += rangeWidth;
+        }
+        return table;
     }
 
     /**
@@ -94,6 +129,22 @@ public class StrategyArmory  implements IStrategyArmory {
         }
         //兜底
         return -1;
+    }
+
+    /**
+     * 权重分组抽奖 -- 使用预装配的权重专属区间表
+     */
+    @Override
+    public Integer getRandomAwardId(Long strategyId, String weightGroupId) {
+        List<AwardRateRange> weightTable = strategyRepository.getWeightRangeTable(strategyId, weightGroupId);
+        if (weightTable == null || weightTable.isEmpty()) {
+            log.warn("权重区间表未找到 strategyId:{} groupId:{}，降级走默认抽奖", strategyId, weightGroupId);
+            return getRandomAwardId(strategyId);
+        }
+        int upperBound = weightTable.get(weightTable.size() - 1).getRangeEnd();
+        int randomVal = new SecureRandom().nextInt(upperBound);
+        Integer result = binarySearch(weightTable, randomVal);
+        return (result == null || result == -1) ? getRandomAwardId(strategyId) : result;
     }
 
     /**

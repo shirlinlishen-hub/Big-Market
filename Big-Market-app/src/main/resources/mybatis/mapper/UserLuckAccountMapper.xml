@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IUserLuckAccountDao">
+
+    <resultMap id="BaseResultMap" type="shirlin.ai.infrastructure.dao.po.UserLuckAccount">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="strategy_id" property="strategyId" />
+        <result column="luck_value" property="luckValue" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, strategy_id, luck_value, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.UserLuckAccount" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_luck_account (user_id, strategy_id, luck_value, create_time, update_time)
+        VALUES (#{userId}, #{strategyId}, #{luckValue}, NOW(), NOW())
+    </insert>
+
+    <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.UserLuckAccount">
+        UPDATE user_luck_account
+        SET user_id = #{userId},
+            strategy_id = #{strategyId},
+            luck_value = #{luckValue},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM user_luck_account WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_luck_account WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserIdAndStrategyId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_luck_account
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </select>
+
+    <update id="updateLuckValue">
+        UPDATE user_luck_account SET luck_value = #{luckValue}, update_time = NOW()
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </update>
+
+    <update id="incrementLuckValue">
+        UPDATE user_luck_account SET luck_value = luck_value + #{increment}, update_time = NOW()
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </update>
+
+    <update id="resetLuckValue">
+        UPDATE user_luck_account SET luck_value = 0, update_time = NOW()
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </update>
+
+</mapper>

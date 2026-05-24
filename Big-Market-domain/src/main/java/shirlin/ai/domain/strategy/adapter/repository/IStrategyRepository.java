@@ -38,6 +38,10 @@ public interface IStrategyRepository {
 
     List<AwardRateRange> getOrBuildSubRangeTable(Long strategyId, Set<Integer> excludeAwardIds, String cacheKey);
 
+    void storeWeightRangeTable(Long strategyId, String groupId, List<AwardRateRange> table);
+
+    List<AwardRateRange> getWeightRangeTable(Long strategyId, String groupId);
+
     // ---- 奖品库存操作（规则树 Stock 节点，Redis decr 原子扣减） ----
 
     /** 预扣奖品库存；返回 true 表示扣减成功（有剩余库存），false 表示库存耗尽 */
@@ -55,7 +59,7 @@ public interface IStrategyRepository {
     int queryUserDrawCount(String userId, Long strategyId);
 
     /** 查询用户权重值（当前实现 = 累计抽奖次数，可按需扩展） */
-    int queryUserWeightValue(String userId, Long strategyId);
+    int queryUserThresholdValue(String userId, Long strategyId);
 
     /** 查询用户运气值 */
     int queryUserLuckValue(String userId, Long strategyId);

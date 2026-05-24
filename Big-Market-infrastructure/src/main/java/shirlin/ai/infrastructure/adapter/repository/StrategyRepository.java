@@ -26,6 +26,7 @@ public class StrategyRepository implements IStrategyRepository {
     private static final String PRECISION_KEY          = "big_market:strategy:precision:";
     private static final String MAX_AWARD_KEY          = "big_market:strategy:max_award:";
     private static final String SUB_RANGE_TABLE_KEY    = "big_market:strategy:sub_range_table:";
+    private static final String WEIGHT_RANGE_TABLE_KEY = "big_market:strategy:weight_range_table:";
     private static final String AWARD_STOCK_KEY        = "big_market:strategy:award:stock:";
 
     @Resource
@@ -175,6 +176,16 @@ public class StrategyRepository implements IStrategyRepository {
         return subTable;
     }
 
+    @Override
+    public void storeWeightRangeTable(Long strategyId, String groupId, List<AwardRateRange> table) {
+        redisService.setValue(WEIGHT_RANGE_TABLE_KEY + strategyId + ":" + groupId, table);
+    }
+
+    @Override
+    public List<AwardRateRange> getWeightRangeTable(Long strategyId, String groupId) {
+        return redisService.getValue(WEIGHT_RANGE_TABLE_KEY + strategyId + ":" + groupId);
+    }
+
     // ---- 库存操作 ----
 
     @Override
@@ -209,7 +220,8 @@ public class StrategyRepository implements IStrategyRepository {
     }
 
     @Override
-    public int queryUserWeightValue(String userId, Long strategyId) {
+    public int queryUserThresholdValue(String userId, Long strategyId) {
+
         // 当前以累计抽奖次数作为权重值，可按需替换为积分/会员等级等
         return userAwardRecordDao.countByUserIdAndStrategyId(userId, strategyId);
     }

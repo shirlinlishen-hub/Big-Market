@@ -1,6 +1,7 @@
 package shirlin.ai.domain.strategy.service.Raffle;
 
 import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RaffleResultEntity;
@@ -8,6 +9,8 @@ import shirlin.ai.domain.strategy.model.entity.RuleFilterResultEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
 import shirlin.ai.domain.strategy.service.IRaffleStrategy;
 import shirlin.ai.domain.strategy.service.IStrategyArmory;
+import shirlin.ai.domain.strategy.service.Rule.PreRaffleChain.Factory.StrategyPreRuleFilterFactory;
+import shirlin.ai.types.design.link.model2.chain.BusinessLinkedList;
 
 import java.util.Collections;
 import java.util.Set;
@@ -20,8 +23,14 @@ public abstract class AbstrackRaffleStrategy implements IRaffleStrategy {
     @Resource
     private IStrategyArmory armory;
 
+    @Resource
+    @Qualifier("strategyPreRuleFilter")
+    private BusinessLinkedList<RaffleFactorEntity,
+            StrategyPreRuleFilterFactory.DynamicContext,
+            RuleFilterResultEntity> preRuleChain;
+
     @Override
-    public RaffleResultEntity performRaffle(RaffleFactorEntity factor) {
+    public RaffleResultEntity performRaffle(RaffleFactorEntity factor) throws Exception {
 
         Long strategyId = factor.getStrategyId();
 
@@ -33,11 +42,17 @@ public abstract class AbstrackRaffleStrategy implements IRaffleStrategy {
             return buildResult(strategyId, beforeResult.getAwardId());
         }
 
-        // 2. 执行抽奖：概率区间二分查找
-        Set<Integer> excludeAwardIds = (beforeResult != null && beforeResult.getExcludeAwardIds() != null)
-                ? beforeResult.getExcludeAwardIds()
-                : Collections.emptySet();
-        Integer awardId = armory.getRandomAwardId(strategyId, excludeAwardIds);
+        // 2. 执行抽奖：权重命中走专属区间表，否则走默认（含排除）
+        Integer awardId;
+        String weightGroupId = (beforeResult != null) ? beforeResult.getWeightGroupId() : null;
+        if (weightGroupId != null) {
+            awardId = armory.getRandomAwardId(strategyId, weightGroupId);
+        } else {
+            Set<Integer> excludeAwardIds = (beforeResult != null && beforeResult.getExcludeAwardIds() != null)
+                    ? beforeResult.getExcludeAwardIds()
+                    : Collections.emptySet();
+            awardId = armory.getRandomAwardId(strategyId, excludeAwardIds);
+        }
 
         // 3. 后置规则过滤（规则树：Lock → Stock → 兜底）
         RuleFilterResultEntity afterResult = doAfterRaffleRuleFilter(factor, awardId);
@@ -51,8 +66,18 @@ public abstract class AbstrackRaffleStrategy implements IRaffleStrategy {
     /**
      * 前置规则（责任链）：子类实现，决定用哪个奖池
      */
-    protected RuleFilterResultEntity doBeforeRaffleRuleFilter(RaffleFactorEntity factor) {
-        return null;
+    protected RuleFilterResultEntity doBeforeRaffleRuleFilter(RaffleFactorEntity factor) throws Exception {
+
+        StrategyPreRuleFilterFactory.DynamicContext ctx =
+                new StrategyPreRuleFilterFactory.DynamicContext();
+        RuleFilterResultEntity result = preRuleChain.apply(factor, ctx);
+        if (result != null) return result;  // TAKE_OVER（黑名单命中）
+        // ALLOW：把权重分组ID和排除集回填进 result
+        return RuleFilterResultEntity.builder()
+                .type(RuleFilterResultEntity.Type.ALLOW)
+                .weightGroupId(ctx.getWeightGroupId())
+                .excludeAwardIds(ctx.getExcludeAwardIds())
+                .build();
     }
 
     /**

@@ -1,10 +1,11 @@
-package shirlin.ai.domain.strategy.service.Rule.Chain.Impl;
+package shirlin.ai.domain.Activity.service.Rule.Chain.Impl;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
-import shirlin.ai.domain.strategy.service.Rule.Chain.AbstractActivityChainHandler;
+import shirlin.ai.domain.Activity.model.entity.ActivityFactorEntity;
+import shirlin.ai.domain.Activity.service.Rule.Chain.AbstractActivityChainHandler;
 import shirlin.ai.types.enums.ResponseCode;
 import shirlin.ai.types.exception.AppException;
 
@@ -21,14 +22,17 @@ public class ActivitySkuStockHandler extends AbstractActivityChainHandler {
     private IActivityRepository activityRepository;
 
     @Override
-    public boolean apply(String userId, Long strategyId) {
+    public boolean apply(ActivityFactorEntity factor) {
 
-        boolean stockOk = activityRepository.deductActivitySkuStock(strategyId);
+        String userId =  factor.getUserId();
+        Long activityId =  factor.getActivityId();
+        Long skuId =  factor.getSkuId();
+        boolean stockOk = activityRepository.deductActivitySkuStock(activityId,skuId);
         if (!stockOk) {
-            log.warn("SKU 库存不足 strategyId:{}", strategyId);
+            log.warn("SKU 库存不足 activityId:{}", activityId);
             throw new AppException(ResponseCode.ACTIVITY_SKU_STOCK_EMPTY.getInfo());
         }
 
-        return next(userId, strategyId);
+        return next(factor);
     }
 }

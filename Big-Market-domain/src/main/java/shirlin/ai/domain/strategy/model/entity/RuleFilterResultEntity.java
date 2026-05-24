@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -17,8 +18,9 @@ import java.util.Set;
 public class RuleFilterResultEntity {
 
     private Type type;
-    private Integer awardId;           // TAKE_OVER时有值
+    private Integer awardId;              // TAKE_OVER时有值
     private Set<Integer> excludeAwardIds; // ALLOW时可能有排除项
+    private String weightGroupId;         // 权重分组ID，非null时走权重专属区间表
 
     public enum Type {
         ALLOW,      // 放行, 继续后续流程，

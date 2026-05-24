@@ -20,8 +20,8 @@ public class ActivitySku {
     private Integer skuType;
     private Integer pointsCost;
     private Long activityCountId;
-    private Integer stockCount;
-    private Integer stockSurplus;
+    private Long stockCount;
+    private Long stockSurplus;
     private Integer status;
     private Date createTime;
     private Date updateTime;

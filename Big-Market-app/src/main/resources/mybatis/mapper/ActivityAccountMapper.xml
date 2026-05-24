@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IActivityAccountDao">
+
+    <resultMap id="BaseResultMap" type="shirlin.ai.infrastructure.dao.po.ActivityAccount">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="activity_id" property="activityId" />
+        <result column="total_count" property="totalCount" />
+        <result column="total_count_surplus" property="totalCountSurplus" />
+        <result column="month_count" property="monthCount" />
+        <result column="month_count_surplus" property="monthCountSurplus" />
+        <result column="day_count" property="dayCount" />
+        <result column="day_count_surplus" property="dayCountSurplus" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, activity_id, total_count, total_count_surplus, month_count, month_count_surplus,
+        day_count, day_count_surplus, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.ActivityAccount" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO activity_account (user_id, activity_id, total_count, total_count_surplus, month_count,
+                                      month_count_surplus, day_count, day_count_surplus, create_time, update_time)
+        VALUES (#{userId}, #{activityId}, #{totalCount}, #{totalCountSurplus}, #{monthCount},
+                #{monthCountSurplus}, #{dayCount}, #{dayCountSurplus}, NOW(), NOW())
+    </insert>
+
+    <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.ActivityAccount">
+        UPDATE activity_account
+        SET user_id = #{userId},
+            activity_id = #{activityId},
+            total_count = #{totalCount},
+            total_count_surplus = #{totalCountSurplus},
+            month_count = #{monthCount},
+            month_count_surplus = #{monthCountSurplus},
+            day_count = #{dayCount},
+            day_count_surplus = #{dayCountSurplus},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM activity_account WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_account WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserIdAndActivityId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_account
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
+    </select>
+
+    <update id="deductTotalSurplus">
+        UPDATE activity_account
+        SET total_count_surplus = total_count_surplus - 1,
+            update_time = NOW()
+        WHERE user_id = #{userId}
+          AND activity_id = #{activityId}
+          AND total_count_surplus > 0
+    </update>
+
+    <update id="deductMonthSurplus">
+        UPDATE activity_account
+        SET month_count_surplus = month_count_surplus - 1,
+            update_time = NOW()
+        WHERE user_id = #{userId}
+          AND activity_id = #{activityId}
+          AND month_count_surplus > 0
+    </update>
+
+    <update id="deductDaySurplus">
+        UPDATE activity_account
+        SET day_count_surplus = day_count_surplus - 1,
+            update_time = NOW()
+        WHERE user_id = #{userId}
+          AND activity_id = #{activityId}
+          AND day_count_surplus > 0
+    </update>
+
+</mapper>
