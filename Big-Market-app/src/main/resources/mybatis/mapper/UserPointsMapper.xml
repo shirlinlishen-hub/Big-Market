@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IUserPointsDao">
+    <select id="selectLedgerForUpdate" resultType="shirlin.ai.infrastructure.dao.po.UserPointsLedger">
+        SELECT order_id AS orderId, user_id AS userId, points, create_time AS createTime
+        FROM user_points_ledger
+        WHERE order_id = #{orderId}
+        FOR UPDATE
+    </select>
+    <insert id="insertLedger">
+        INSERT INTO user_points_ledger (order_id, user_id, points)
+        VALUES (#{orderId}, #{userId}, #{points})
+    </insert>
+    <insert id="addPoints">
+        INSERT INTO user_points_account (user_id, points) VALUES (#{userId}, #{points})
+        ON DUPLICATE KEY UPDATE points = points + VALUES(points), update_time = NOW()
+    </insert>
+</mapper>

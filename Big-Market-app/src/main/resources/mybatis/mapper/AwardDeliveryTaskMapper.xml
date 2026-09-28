@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IAwardDeliveryTaskDao">
+    <resultMap id="TaskMap" type="shirlin.ai.infrastructure.dao.po.AwardDeliveryTask">
+        <id column="order_id" property="orderId"/>
+        <result column="user_id" property="userId"/>
+        <result column="award_id" property="awardId"/>
+        <result column="award_type" property="awardType"/>
+        <result column="award_key" property="awardKey"/>
+        <result column="award_value" property="awardValue"/>
+        <result column="status" property="status"/>
+        <result column="attempts" property="attempts"/>
+        <result column="next_retry_at" property="nextRetryAt"/>
+        <result column="last_error" property="lastError"/>
+        <result column="dispatch_version" property="dispatchVersion"/>
+    </resultMap>
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.AwardDeliveryTask">
+        INSERT INTO award_delivery_task (order_id, user_id, award_id, award_type, award_key, award_value, status)
+        VALUES (#{orderId}, #{userId}, #{awardId}, #{awardType}, #{awardKey}, #{awardValue}, 0)
+    </insert>
+    <select id="selectDueTasks" resultMap="TaskMap">
+        SELECT order_id, user_id, award_id, award_type, award_key, award_value, status, attempts,
+               next_retry_at, last_error, dispatch_version
+        FROM award_delivery_task
+        WHERE status = 0 AND next_retry_at &lt;= NOW()
+        ORDER BY next_retry_at LIMIT 100
+    </select>
+    <select id="selectForUpdate" resultMap="TaskMap">
+        SELECT order_id, user_id, award_id, award_type, award_key, award_value,
+               status, attempts, next_retry_at, last_error, dispatch_version
+        FROM award_delivery_task
+        WHERE user_id = #{userId} AND order_id = #{orderId} FOR UPDATE
+    </select>
+    <update id="claim">
+        UPDATE award_delivery_task SET status = 1, attempts = attempts + 1,
+            update_time = NOW()
+        WHERE order_id = #{orderId} AND status = 0
+    </update>
+    <update id="markSuccess">
+        UPDATE award_delivery_task SET status = 2, update_time = NOW()
+        WHERE order_id = #{orderId} AND status = 1
+    </update>
+    <update id="markManual">
+        UPDATE award_delivery_task SET status = 3, last_error = #{reason},
+            update_time = NOW()
+        WHERE order_id = #{orderId} AND status = 1
+    </update>
+    <update id="markRetry">
+        UPDATE award_delivery_task SET status = CASE WHEN attempts &gt;= 10 THEN 4 ELSE 0 END,
+            last_error = #{reason},
+            next_retry_at = DATE_ADD(NOW(), INTERVAL LEAST(3600, POW(2, attempts)) SECOND),
+            update_time = NOW()
+        WHERE order_id = #{orderId} AND status = 1
+    </update>
+    <update id="recordFailure">
+        UPDATE award_delivery_task
+        SET attempts = attempts + 1,
+            status = CASE WHEN attempts + 1 &gt;= 10 THEN 4 ELSE 0 END,
+            last_error = #{reason},
+            next_retry_at = DATE_ADD(NOW(), INTERVAL LEAST(3600, POW(2, attempts + 1)) SECOND),
+            update_time = NOW()
+        WHERE user_id = #{userId} AND order_id = #{orderId} AND status = 0
+    </update>
+    <select id="selectByUserAndOrder" resultMap="TaskMap">
+        SELECT order_id, user_id, award_id, award_type, award_key, award_value,
+               status, attempts, next_retry_at, last_error, dispatch_version
+        FROM award_delivery_task WHERE user_id = #{userId} AND order_id = #{orderId}
+    </select>
+    <select id="selectByOrderIdForUpdate" resultMap="TaskMap">
+        SELECT order_id, user_id, award_id, award_type, award_key, award_value,
+               status, attempts, next_retry_at, last_error, dispatch_version
+        FROM award_delivery_task WHERE order_id = #{orderId} FOR UPDATE
+    </select>
+    <select id="selectByStatus" resultMap="TaskMap">
+        SELECT order_id, user_id, award_id, award_type, award_key, award_value,
+               status, attempts, next_retry_at, last_error, dispatch_version
+        FROM award_delivery_task WHERE status = #{status}
+        ORDER BY update_time, order_id LIMIT #{limit}
+    </select>
+    <update id="requeue">
+        UPDATE award_delivery_task SET status = 0, next_retry_at = NOW(),
+            last_error = NULL, update_time = NOW()
+        WHERE order_id = #{orderId} AND status IN (3, 4)
+    </update>
+    <update id="markManualSuccess">
+        UPDATE award_delivery_task SET status = 2, last_error = NULL, update_time = NOW()
+        WHERE order_id = #{orderId} AND status IN (3, 4)
+    </update>
+    <update id="markManualFailed">
+        UPDATE award_delivery_task SET status = 4, last_error = #{reason}, update_time = NOW()
+        WHERE order_id = #{orderId} AND status IN (3, 4)
+    </update>
+</mapper>

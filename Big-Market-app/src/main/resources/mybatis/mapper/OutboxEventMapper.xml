@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IOutboxEventDao">
+    <resultMap id="OutboxMap" type="shirlin.ai.infrastructure.dao.po.OutboxEvent">
+        <id column="event_id" property="eventId"/>
+        <result column="event_type" property="eventType"/>
+        <result column="event_key" property="eventKey"/>
+        <result column="aggregate_id" property="aggregateId"/>
+        <result column="partition_key" property="partitionKey"/>
+        <result column="payload" property="payload"/>
+        <result column="status" property="status"/>
+        <result column="attempts" property="attempts"/>
+        <result column="next_attempt_at" property="nextAttemptAt"/>
+        <result column="last_error" property="lastError"/>
+        <result column="create_time" property="createTime"/>
+        <result column="locked_by" property="lockedBy"/>
+        <result column="lock_token" property="lockToken"/>
+        <result column="locked_until" property="lockedUntil"/>
+        <result column="published_time" property="publishedTime"/>
+        <result column="dead_time" property="deadTime"/>
+    </resultMap>
+    <insert id="insertIdempotent">
+        INSERT INTO outbox_event
+            (event_id, event_type, event_key, aggregate_id, partition_key, payload, status)
+        VALUES (#{eventId}, #{eventType}, #{eventKey}, #{aggregateId}, #{partitionKey}, #{payload}, 0)
+        ON DUPLICATE KEY UPDATE event_key = VALUES(event_key)
+    </insert>
+    <select id="selectClaimable" resultMap="OutboxMap">
+        SELECT event_id, event_type, event_key, aggregate_id, partition_key, payload,
+               status, attempts, next_attempt_at, last_error, create_time,
+               locked_by, lock_token, locked_until, published_time, dead_time
+        FROM outbox_event
+        WHERE event_type = 'AWARD_DELIVERY_REQUESTED'
+          AND status = 0
+          AND next_attempt_at &lt;= NOW()
+          AND (locked_until IS NULL OR locked_until &lt; NOW())
+        ORDER BY create_time, event_id
+        LIMIT #{limit}
+        FOR UPDATE SKIP LOCKED
+    </select>
+    <update id="acquireLease">
+        UPDATE outbox_event
+        SET locked_by = #{lockedBy}, lock_token = #{lockToken},
+            locked_until = #{lockedUntil}, update_time = NOW()
+        WHERE event_id = #{eventId}
+          AND status = 0
+          AND (locked_until IS NULL OR locked_until &lt; NOW())
+    </update>
+    <update id="markPublished">
+        UPDATE outbox_event
+        SET status = 1, published_time = NOW(), last_error = NULL,
+            locked_by = NULL, lock_token = NULL, locked_until = NULL,
+            update_time = NOW()
+        WHERE event_id = #{eventId}
+          AND status = 0
+          AND lock_token = #{lockToken}
+    </update>
+    <update id="recordPublishFailure">
+        UPDATE outbox_event
+        SET attempts = attempts + 1,
+            status = CASE WHEN attempts + 1 &gt;= 10 THEN 2 ELSE 0 END,
+            last_error = #{reason},
+            next_attempt_at = CASE
+                WHEN attempts + 1 &gt;= 10 THEN next_attempt_at
+                ELSE DATE_ADD(NOW(), INTERVAL LEAST(3600, POW(2, attempts + 1)) SECOND)
+            END,
+            dead_time = CASE WHEN attempts + 1 &gt;= 10 THEN NOW() ELSE NULL END,
+            locked_by = NULL, lock_token = NULL, locked_until = NULL,
+            update_time = NOW()
+        WHERE event_id = #{eventId}
+          AND status = 0
+          AND lock_token = #{lockToken}
+    </update>
+</mapper>
