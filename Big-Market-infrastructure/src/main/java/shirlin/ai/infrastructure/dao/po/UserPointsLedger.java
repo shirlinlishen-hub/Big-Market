@@ -10,4 +10,9 @@ public class UserPointsLedger {
     private String userId;
     private Integer points;
     private Date createTime;
+
+    public boolean matches(String expectedUserId, int expectedPoints) {
+        return expectedUserId != null && expectedUserId.equals(userId)
+                && points != null && points == expectedPoints;
+    }
 }
