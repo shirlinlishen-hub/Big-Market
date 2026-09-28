@@ -2,4 +2,16 @@ spring:
   config:
     name: Big-Market-app
   profiles:
-    active: dev
+    active: dev,single
+  datasource:
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+    url: jdbc:shardingsphere:classpath:sharding-config.yaml
+  rabbitmq:
+    host: ${BIG_MARKET_RABBIT_HOST:localhost}
+    port: ${BIG_MARKET_RABBIT_PORT:5672}
+    username: ${BIG_MARKET_RABBIT_USERNAME:guest}
+    password: ${BIG_MARKET_RABBIT_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
