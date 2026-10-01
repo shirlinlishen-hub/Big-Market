@@ -91,7 +91,8 @@
     </select>
     <update id="requeue">
         UPDATE award_delivery_task SET status = 0, next_retry_at = NOW(),
-            last_error = NULL, update_time = NOW()
+            last_error = NULL, dispatch_version = dispatch_version + 1,
+            update_time = NOW()
         WHERE order_id = #{orderId} AND status IN (3, 4)
     </update>
     <update id="markManualSuccess">

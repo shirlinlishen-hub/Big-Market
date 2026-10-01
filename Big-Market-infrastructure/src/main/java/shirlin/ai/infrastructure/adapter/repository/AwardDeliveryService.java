@@ -12,6 +12,7 @@ import shirlin.ai.domain.strategy.service.IAwardDeliveryOperations;
 import shirlin.ai.infrastructure.delivery.AwardFulfillmentService;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AwardDeliveryService implements IAwardDeliveryOperations {
@@ -19,6 +20,7 @@ public class AwardDeliveryService implements IAwardDeliveryOperations {
     @Resource private IUserAwardRecordDao awardRecordDao;
     @Resource private IAwardDeliveryAuditDao auditDao;
     @Resource private AwardFulfillmentService fulfillmentService;
+    @Resource private TransactionalOutboxService outboxService;
 
     @Transactional(rollbackFor = Exception.class)
     public void deliver(String userId, String orderId) {
@@ -44,10 +46,17 @@ public class AwardDeliveryService implements IAwardDeliveryOperations {
     public void retry(String orderId, String operatorId, String note) {
         AwardDeliveryTask task = taskDao.selectByOrderIdForUpdate(orderId);
         requireOperatorAction(task, operatorId, note);
+        int nextVersion = Math.addExact(task.getDispatchVersion(), 1);
         if (taskDao.requeue(orderId) != 1
                 || auditDao.insert(orderId, operatorId, "RETRY", note) != 1) {
             throw new IllegalStateException("Delivery task cannot be retried from its current state");
         }
+        outboxService.append(
+                "AWARD_DELIVERY_REQUESTED",
+                "award-delivery:" + orderId + ":v" + nextVersion,
+                orderId,
+                task.getUserId(),
+                Map.of("orderId", orderId, "userId", task.getUserId()));
     }
 
     @Override

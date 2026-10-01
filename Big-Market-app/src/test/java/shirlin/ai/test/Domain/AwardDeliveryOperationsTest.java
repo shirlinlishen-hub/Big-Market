@@ -3,11 +3,14 @@ package shirlin.ai.test.Domain;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import shirlin.ai.infrastructure.adapter.repository.AwardDeliveryService;
+import shirlin.ai.infrastructure.adapter.repository.TransactionalOutboxService;
 import shirlin.ai.infrastructure.dao.IAwardDeliveryAuditDao;
 import shirlin.ai.infrastructure.dao.IAwardDeliveryTaskDao;
 import shirlin.ai.infrastructure.dao.IUserAwardRecordDao;
 import shirlin.ai.infrastructure.dao.po.AwardDeliveryTask;
 import shirlin.ai.infrastructure.delivery.AwardFulfillmentService;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -17,8 +20,10 @@ class AwardDeliveryOperationsTest {
     void operatorCanRequeueManualOrFailedTaskWithAudit() {
         IAwardDeliveryTaskDao tasks = mock(IAwardDeliveryTaskDao.class);
         IAwardDeliveryAuditDao audits = mock(IAwardDeliveryAuditDao.class);
-        AwardDeliveryService service = service(tasks, audits, mock(IUserAwardRecordDao.class));
+        TransactionalOutboxService outbox = mock(TransactionalOutboxService.class);
+        AwardDeliveryService service = service(tasks, audits, mock(IUserAwardRecordDao.class), outbox);
         AwardDeliveryTask task = task("order-1", "user-1", 3);
+        task.setDispatchVersion(2);
         when(tasks.selectByOrderIdForUpdate("order-1")).thenReturn(task);
         when(tasks.requeue("order-1")).thenReturn(1);
         when(audits.insert("order-1", "operator-1", "RETRY", "provider recovered")).thenReturn(1);
@@ -27,6 +32,8 @@ class AwardDeliveryOperationsTest {
 
         verify(tasks).requeue("order-1");
         verify(audits).insert("order-1", "operator-1", "RETRY", "provider recovered");
+        verify(outbox).append("AWARD_DELIVERY_REQUESTED", "award-delivery:order-1:v3",
+                "order-1", "user-1", Map.of("orderId", "order-1", "userId", "user-1"));
     }
 
     @Test
@@ -34,7 +41,8 @@ class AwardDeliveryOperationsTest {
         IAwardDeliveryTaskDao tasks = mock(IAwardDeliveryTaskDao.class);
         IAwardDeliveryAuditDao audits = mock(IAwardDeliveryAuditDao.class);
         IUserAwardRecordDao awards = mock(IUserAwardRecordDao.class);
-        AwardDeliveryService service = service(tasks, audits, awards);
+        AwardDeliveryService service = service(tasks, audits, awards,
+                mock(TransactionalOutboxService.class));
         AwardDeliveryTask task = task("order-1", "user-1", 3);
         when(tasks.selectByOrderIdForUpdate("order-1")).thenReturn(task);
         when(tasks.markManualSuccess("order-1")).thenReturn(1);
@@ -50,12 +58,14 @@ class AwardDeliveryOperationsTest {
 
     private AwardDeliveryService service(IAwardDeliveryTaskDao tasks,
                                          IAwardDeliveryAuditDao audits,
-                                         IUserAwardRecordDao awards) {
+                                         IUserAwardRecordDao awards,
+                                         TransactionalOutboxService outbox) {
         AwardDeliveryService service = new AwardDeliveryService();
         ReflectionTestUtils.setField(service, "taskDao", tasks);
         ReflectionTestUtils.setField(service, "auditDao", audits);
         ReflectionTestUtils.setField(service, "awardRecordDao", awards);
         ReflectionTestUtils.setField(service, "fulfillmentService", mock(AwardFulfillmentService.class));
+        ReflectionTestUtils.setField(service, "outboxService", outbox);
         return service;
     }
 
