@@ -1,0 +1,8 @@
+# Functional-chain profile: all order, quota, award, and ledger writes share one local transaction.
+# Override these values in the deployment environment.
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${BIG_MARKET_JDBC_URL:jdbc:mysql://159.75.79.79:13306/Big-Market?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${BIG_MARKET_DB_USER:root}
+    password: ${BIG_MARKET_DB_PASSWORD:123456}

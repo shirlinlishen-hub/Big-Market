@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.ISkuRebateDao">
+    <resultMap id="RebateMap" type="shirlin.ai.infrastructure.dao.po.SkuRebateOrder">
+        <id column="purchase_order_id" property="purchaseOrderId"/>
+        <result column="user_id" property="userId"/>
+        <result column="activity_id" property="activityId"/>
+        <result column="rebate_draw_count" property="rebateDrawCount"/>
+        <result column="status" property="status"/>
+    </resultMap>
+    <select id="selectConfiguredCount" resultType="java.lang.Integer">
+        SELECT rebate_draw_count FROM sku_rebate_config WHERE sku_id = #{skuId} AND status = 1
+    </select>
+    <insert id="insertOrder">
+        INSERT INTO sku_rebate_order (purchase_order_id, user_id, activity_id, rebate_draw_count)
+        VALUES (#{purchaseOrderId}, #{userId}, #{activityId}, #{rebateDrawCount})
+    </insert>
+    <select id="selectPending" resultMap="RebateMap">
+        SELECT purchase_order_id, user_id, activity_id, rebate_draw_count, status
+        FROM sku_rebate_order WHERE status = 0 ORDER BY create_time LIMIT 100
+    </select>
+    <select id="selectForUpdate" resultMap="RebateMap">
+        SELECT purchase_order_id, user_id, activity_id, rebate_draw_count, status
+        FROM sku_rebate_order WHERE purchase_order_id = #{purchaseOrderId} FOR UPDATE
+    </select>
+    <update id="complete">
+        UPDATE sku_rebate_order SET status = 1, update_time = NOW()
+        WHERE purchase_order_id = #{purchaseOrderId} AND status = 0
+    </update>
+    <update id="cancel">
+        UPDATE sku_rebate_order SET status = 2, update_time = NOW()
+        WHERE purchase_order_id = #{purchaseOrderId} AND status IN (0, 1)
+    </update>
+</mapper>

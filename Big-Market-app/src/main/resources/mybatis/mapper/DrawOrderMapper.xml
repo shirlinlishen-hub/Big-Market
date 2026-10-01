@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IDrawOrderDao">
+    <resultMap id="DrawOrderMap" type="shirlin.ai.infrastructure.dao.po.DrawOrder">
+        <id column="order_id" property="orderId"/>
+        <result column="user_id" property="userId"/>
+        <result column="activity_id" property="activityId"/>
+        <result column="strategy_id" property="strategyId"/>
+        <result column="request_no" property="requestNo"/>
+        <result column="status" property="status"/>
+        <result column="award_id" property="awardId"/>
+        <result column="award_type" property="awardType"/>
+        <result column="draw_day" property="drawDay"/>
+        <result column="draw_month" property="drawMonth"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+    <sql id="Columns">order_id, user_id, activity_id, strategy_id, request_no, status,
+        award_id, award_type, draw_day, draw_month, create_time</sql>
+    <select id="selectByUserIdAndRequestNo" resultMap="DrawOrderMap">
+        SELECT <include refid="Columns"/> FROM raffle_order
+        WHERE user_id = #{userId} AND request_no = #{requestNo}
+    </select>
+    <select id="selectForUpdate" resultMap="DrawOrderMap">
+        SELECT <include refid="Columns"/> FROM raffle_order
+        WHERE user_id = #{userId} AND order_id = #{orderId} FOR UPDATE
+    </select>
+    <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.DrawOrder">
+        INSERT INTO raffle_order (order_id, user_id, activity_id, strategy_id,
+                                  request_no, status, draw_day, draw_month)
+        VALUES (#{orderId}, #{userId}, #{activityId}, #{strategyId},
+                #{requestNo}, 0, #{drawDay}, #{drawMonth})
+    </insert>
+    <update id="complete">
+        UPDATE raffle_order SET status = 1, award_id = #{awardId},
+            award_type = #{awardType}, update_time = NOW()
+        WHERE user_id = #{userId} AND order_id = #{orderId} AND status = 0
+    </update>
+    <select id="selectTimedOut" resultMap="DrawOrderMap">
+        SELECT <include refid="Columns"/> FROM raffle_order
+        WHERE status = 0 AND create_time &lt; #{before}
+        ORDER BY create_time LIMIT 100
+    </select>
+    <update id="cancel">
+        UPDATE raffle_order SET status = 2, update_time = NOW()
+        WHERE user_id = #{userId} AND order_id = #{orderId} AND status = 0
+    </update>
+</mapper>

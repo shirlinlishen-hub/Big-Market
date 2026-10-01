@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IInventoryBucketDao">
+    <resultMap id="ReservationMap" type="shirlin.ai.infrastructure.dao.po.InventoryReservation">
+        <id column="reservation_id" property="reservationId"/>
+        <result column="inventory_type" property="inventoryType"/>
+        <result column="inventory_key" property="inventoryKey"/>
+        <result column="bucket_id" property="bucketId"/>
+        <result column="status" property="status"/>
+    </resultMap>
+    <select id="countBuckets" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM inventory_stock_bucket
+        WHERE inventory_type = #{inventoryType} AND inventory_key = #{inventoryKey}
+    </select>
+    <update id="reserveBucket">
+        UPDATE inventory_stock_bucket
+        SET stock_surplus = stock_surplus - 1, update_time = NOW()
+        WHERE inventory_type = #{inventoryType} AND inventory_key = #{inventoryKey}
+          AND bucket_id = #{bucketId} AND stock_surplus &gt; 0
+    </update>
+    <update id="restoreBucket">
+        UPDATE inventory_stock_bucket
+        SET stock_surplus = stock_surplus + 1, update_time = NOW()
+        WHERE inventory_type = #{inventoryType} AND inventory_key = #{inventoryKey}
+          AND bucket_id = #{bucketId} AND stock_surplus &lt; stock_count
+    </update>
+    <insert id="insertReservation">
+        INSERT INTO inventory_reservation
+            (reservation_id, inventory_type, inventory_key, bucket_id, status)
+        VALUES (#{reservationId}, #{inventoryType}, #{inventoryKey}, #{bucketId}, 0)
+    </insert>
+    <select id="selectReservation" resultMap="ReservationMap">
+        SELECT reservation_id, inventory_type, inventory_key, bucket_id, status
+        FROM inventory_reservation WHERE reservation_id = #{reservationId}
+    </select>
+    <select id="selectReservationForUpdate" resultMap="ReservationMap">
+        SELECT reservation_id, inventory_type, inventory_key, bucket_id, status
+        FROM inventory_reservation WHERE reservation_id = #{reservationId} FOR UPDATE
+    </select>
+    <update id="markReleased">
+        UPDATE inventory_reservation SET status = 1, update_time = NOW()
+        WHERE reservation_id = #{reservationId} AND status = 0
+    </update>
+</mapper>

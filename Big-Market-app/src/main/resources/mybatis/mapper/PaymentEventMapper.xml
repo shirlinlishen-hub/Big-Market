@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shirlin.ai.infrastructure.dao.IPaymentEventDao">
+    <resultMap id="EventMap" type="shirlin.ai.infrastructure.dao.po.PaymentEvent">
+        <id column="event_id" property="eventId"/>
+        <result column="event_type" property="eventType"/>
+        <result column="payment_order_no" property="paymentOrderNo"/>
+        <result column="user_id" property="userId"/>
+        <result column="activity_id" property="activityId"/>
+        <result column="sku_id" property="skuId"/>
+        <result column="payload_hash" property="payloadHash"/>
+        <result column="status" property="status"/>
+        <result column="purchase_order_id" property="purchaseOrderId"/>
+        <result column="removed_unused_count" property="removedUnusedCount"/>
+        <result column="consumed_exposure_count" property="consumedExposureCount"/>
+    </resultMap>
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO payment_event
+            (event_id, event_type, payment_order_no, user_id, activity_id, sku_id, payload_hash, status)
+        VALUES (#{eventId}, #{eventType}, #{paymentOrderNo}, #{userId}, #{activityId}, #{skuId},
+                #{payloadHash}, 0)
+    </insert>
+    <select id="selectByEventId" resultMap="EventMap">
+        SELECT event_id, event_type, payment_order_no, user_id, activity_id, sku_id, payload_hash,
+               status, purchase_order_id, removed_unused_count, consumed_exposure_count
+        FROM payment_event WHERE event_id = #{eventId}
+    </select>
+    <update id="markResult">
+        UPDATE payment_event SET status = #{status}, purchase_order_id = #{purchaseOrderId},
+            removed_unused_count = #{removedUnusedCount},
+            consumed_exposure_count = #{consumedExposureCount}, update_time = NOW()
+        WHERE event_id = #{eventId} AND status = 0
+    </update>
+</mapper>
