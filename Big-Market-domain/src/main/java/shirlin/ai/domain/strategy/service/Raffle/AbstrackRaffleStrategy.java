@@ -54,12 +54,6 @@ public abstract class AbstrackRaffleStrategy implements IRaffleStrategy {
             awardId = armory.getRandomAwardId(strategyId, excludeAwardIds);
         }
 
-        // 3. 后置规则过滤（规则树：Lock → Stock → 兜底）
-        RuleFilterResultEntity afterResult = doAfterRaffleRuleFilter(factor, awardId);
-        if (afterResult != null && RuleFilterResultEntity.Type.TAKE_OVER.equals(afterResult.getType())) {
-            return buildResult(strategyId, afterResult.getAwardId());
-        }
-
         return buildResult(strategyId, awardId);
     }
 
@@ -78,13 +72,6 @@ public abstract class AbstrackRaffleStrategy implements IRaffleStrategy {
                 .weightGroupId(ctx.getWeightGroupId())
                 .excludeAwardIds(ctx.getExcludeAwardIds())
                 .build();
-    }
-
-    /**
-     * 后置规则（规则树）：子类实现，决定最终给什么奖品
-     */
-    protected RuleFilterResultEntity doAfterRaffleRuleFilter(RaffleFactorEntity factor, Integer awardId) {
-        return null;
     }
 
     private RaffleResultEntity buildResult(Long strategyId, Integer awardId) {

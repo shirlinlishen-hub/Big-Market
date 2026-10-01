@@ -19,4 +19,6 @@ public class ActivityFactorEntity {
     private Long activityId;
     private Long strategyId;
     private Long skuId;
+    /** Stable caller-supplied purchase or draw request id for idempotency. */
+    private String outBusinessNo;
 }

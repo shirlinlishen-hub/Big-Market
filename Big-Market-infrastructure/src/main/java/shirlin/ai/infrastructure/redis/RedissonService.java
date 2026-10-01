@@ -34,54 +34,6 @@ public class RedissonService implements IRedisService {
     }
 
 
-    //RQueue --> 队列
-    @Override
-    public <T> RQueue<T> getQueue(String key) {
-        return redissonClient.getQueue(key);
-    }
-
-    @Override
-    public <T> RBlockingQueue<T> getBlockingQueue(String key) {
-        return redissonClient.getBlockingQueue(key);
-    }
-
-    @Override
-    public <T> RDelayedQueue<T> getDelayedQueue(RBlockingQueue<T> rBlockingQueue) {
-        return redissonClient.getDelayedQueue(rBlockingQueue);
-    }
-
-
-    //RAtmoicLong --> 原子计数器
-    @Override
-    public void setAtomicLong(String key, long value) {
-        redissonClient.getAtomicLong(key).set(value);
-    }
-
-    @Override
-    public Long getAtomicLong(String key) {
-        return redissonClient.getAtomicLong(key).get();
-    }
-
-    @Override
-    public long incr(String key) {
-        return redissonClient.getAtomicLong(key).incrementAndGet();
-    }
-
-    @Override
-    public long incrBy(String key, long delta) {
-        return redissonClient.getAtomicLong(key).addAndGet(delta);
-    }
-
-    @Override
-    public long decr(String key) {
-        return redissonClient.getAtomicLong(key).decrementAndGet();
-    }
-
-    @Override
-    public long decrBy(String key, long delta) {
-        return redissonClient.getAtomicLong(key).addAndGet(-delta);
-    }
-
     @Override
     public void remove(String key) {
         redissonClient.getBucket(key).delete();

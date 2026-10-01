@@ -1,40 +1,33 @@
 package shirlin.ai.infrastructure.adapter.repository;
 
 import jakarta.annotation.Resource;
-import org.redisson.api.RBlockingQueue;
-import org.redisson.api.RDelayedQueue;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
+import shirlin.ai.domain.Activity.model.aggregate.CreateSkuOrderAggregate;
 import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
+import shirlin.ai.domain.Activity.model.entity.ActivityOrderEntity;
 import shirlin.ai.domain.Activity.model.entity.ActivitySkuEntity;
-import shirlin.ai.infrastructure.dao.IActivityAccountDao;
-import shirlin.ai.infrastructure.dao.IActivityDao;
-import shirlin.ai.infrastructure.dao.IActivitySkuDao;
-import shirlin.ai.infrastructure.dao.IUserAwardRecordDao;
+import shirlin.ai.domain.Activity.model.entity.QualificationRevokeResult;
+import shirlin.ai.domain.Activity.service.RefundQualificationPolicy;
+import shirlin.ai.infrastructure.dao.*;
 import shirlin.ai.infrastructure.dao.po.Activity;
 import shirlin.ai.infrastructure.dao.po.ActivityAccount;
 import shirlin.ai.infrastructure.dao.po.ActivitySku;
-import shirlin.ai.infrastructure.dao.po.UserAwardRecord;
+import shirlin.ai.infrastructure.dao.po.ActivityCount;
+import shirlin.ai.infrastructure.dao.po.ActivityOrder;
+import shirlin.ai.infrastructure.dao.po.SkuRebateOrder;
 import shirlin.ai.infrastructure.redis.IRedisService;
+import shirlin.ai.types.Tool.SnowflakeIdGenerator;
 import shirlin.ai.types.enums.ResponseCode;
 import shirlin.ai.types.exception.AppException;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 @Repository
 public class ActivityRepository implements IActivityRepository {
 
     private static final String ACTIVITY_KEY = "big_market:activity:activity";
-    private static final String SKU_STOCK_KEY       = "big_market:activity:sku:stock:";
-    private static final String SKU_STOCK_LOCK_KEY  = "big_market:activity:sku:stock:lock:";
-    private static final String SKU_STOCK_QUEUE_KEY = "big_market:activity:sku:stock:queue";
-    private static final String MONTHLY_QUOTA_KEY   = "big_market:user:quota:monthly:";
-    private static final String DAILY_QUOTA_KEY     = "big_market:user:quota:daily:";
 
     @Resource
     private IActivityDao activityDao;
@@ -49,7 +42,22 @@ public class ActivityRepository implements IActivityRepository {
     private IUserAwardRecordDao userAwardRecordDao;
 
     @Resource
+    private IActivityOrderDao activityOrderDao;
+
+    @Resource
+    private IActivityCountDao activityCountDao;
+    @Resource
+    private ISkuRebateDao skuRebateDao;
+
+    @Resource
+    private SnowflakeIdGenerator idGenerator;
+
+    @Resource
     private IRedisService redisService;
+    @Resource
+    private MysqlInventoryBucketService inventoryBucketService;
+    @Resource
+    private TransactionalOutboxService outboxService;
 
     private Long queryActivityId(Long activityId) {
         Activity activity = activityDao.selectByStrategyId(activityId);
@@ -58,43 +66,6 @@ public class ActivityRepository implements IActivityRepository {
         }
         return activity.getActivityId();
     }
-
-    @Override
-    public boolean deductActivitySkuStock(Long activityId,Long skuId) {
-
-        String stockKey = SKU_STOCK_KEY + activityId + skuId;
-
-        if (!redisService.isExists(stockKey)) {
-            return true;
-        }
-
-        long remaining = redisService.decr(stockKey);
-        if (remaining < 0) {
-            redisService.setAtomicLong(stockKey, 0L);
-            return false;
-        }
-
-        String lockKey = SKU_STOCK_LOCK_KEY + activityId + skuId + ":" + remaining;
-        boolean locked = redisService.setNx(lockKey);
-        if (!locked) {
-            redisService.incrBy(stockKey, 1L);
-            return false;
-        }
-
-        RBlockingQueue<Long> blockingQueue =
-                redisService.getBlockingQueue(SKU_STOCK_QUEUE_KEY + activityId + skuId);
-        RDelayedQueue<Long> delayedQueue =
-                redisService.getDelayedQueue(blockingQueue);
-        delayedQueue.offer(activityId, 3, TimeUnit.SECONDS);
-
-        return true;
-    }
-
-    @Override
-    public void cacheActivitySkuStock(Long activityId,Long skuId, Long totalStock) {
-        redisService.setAtomicLong(SKU_STOCK_KEY + activityId + skuId, totalStock);
-    }
-
 
     @Override
     public void cacheActivity(ActivityEntity activity) {
@@ -109,98 +80,184 @@ public class ActivityRepository implements IActivityRepository {
 
 
     @Override
-    public Long createUserRaffleOrder(String userId, Long strategyId) {
-        UserAwardRecord po = new UserAwardRecord();
-        po.setUserId(userId);
-        po.setStrategyId(strategyId);
-        po.setAwardId(0);
-        po.setAwardType(0);
-        po.setAwardContent("");
-        po.setAwardState(0);
-        po.setDrawTime(new Date());
-        userAwardRecordDao.insertOrder(po);
-        return po.getId();
-    }
-
-    @Override
-    public void updateUserRaffleOrder(Long orderId, Integer awardId, Integer awardType) {
-        userAwardRecordDao.updateOrderResult(orderId, awardId, awardType);
-    }
-
-    @Override
-    public boolean deductUserTotalQuota(String userId, Long activityId) {
-        int affected = activityAccountDao.deductTotalSurplus(userId, activityId);
-        return affected > 0;
-    }
-
-    @Override
-    public boolean deductUserMonthlyQuota(String userId, Long activityId) {
-
-        String yearMonth = YearMonth.now().toString();
-        String key = MONTHLY_QUOTA_KEY + userId + ":" + activityId + ":" + yearMonth;
-
-        if (!redisService.isExists(key)) {
-            ActivityAccount account = activityAccountDao.selectByUserIdAndActivityId(userId, activityId);
-            if (account == null) {
-                throw new AppException(ResponseCode.DRAW_COUNT_NOT_ENOUGH.getInfo());
+    @Transactional(rollbackFor = Exception.class)
+    public ActivityOrderEntity purchaseSkuAndGrant(CreateSkuOrderAggregate aggregate, Long activityCountId) {
+        String userId = aggregate.getFactor().getUserId();
+        String businessNo = aggregate.getFactor().getOutBusinessNo();
+        Long activityId = aggregate.getActivity().getActivityId();
+        Long skuId = aggregate.getSku().getSkuId();
+        ActivityOrder existing = activityOrderDao.selectByOutBusinessNo(businessNo);
+        if (existing != null) {
+            if (!userId.equals(existing.getUserId()) || !activityId.equals(existing.getActivityId())
+                    || !skuId.equals(existing.getSkuId())) {
+                throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode());
             }
-            int monthLimit = account.getMonthCount() != null ? account.getMonthCount() : 30;
-            redisService.setAtomicLong(key, monthLimit);
-            long ttl = ChronoUnit.SECONDS.between(
-                    LocalDateTime.now(),
-                    YearMonth.now().atEndOfMonth().atTime(23, 59, 59));
-            redisService.setExpire(key, ttl, TimeUnit.SECONDS);
+            return toOrderEntity(existing);
         }
-
-        long remaining = redisService.decr(key);
-        if (remaining < 0) {
-            redisService.incrBy(key, 1L);
-            return false;
+        ActivityCount count = activityCountDao.selectByActivityCountId(activityCountId);
+        if (count == null || count.getTotalCount() == null || count.getMonthCount() == null
+                || count.getDayCount() == null || count.getTotalCount() == 0
+                || count.getTotalCount() < -1 || count.getMonthCount() == 0
+                || count.getMonthCount() < -1 || count.getDayCount() == 0
+                || count.getDayCount() < -1) {
+            throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode());
         }
-
-        int affected = activityAccountDao.deductMonthSurplus(userId, activityId);
-        if (affected == 0) {
-            redisService.incrBy(key, 1L);
-            return false;
+        if (!inventoryBucketService.reserveSku(skuId, businessNo, aggregate.getSku().getStockCount())) {
+            throw new AppException(ResponseCode.ACTIVITY_SKU_STOCK_EMPTY.getCode());
         }
-        return true;
+        ActivityOrder order = ActivityOrder.builder()
+                .orderId(String.valueOf(idGenerator.nextId()))
+                .userId(userId)
+                .activityId(activityId)
+                .skuId(skuId)
+                .strategyId(aggregate.getActivity().getStrategyId())
+                .orderStatus(3) // GRANTED: one purchase may fund multiple draws
+                .pointsCost(aggregate.getSku().getPointsCost())
+                .outBusinessNo(businessNo)
+                .grantTotalCount(count.getTotalCount())
+                .grantMonthCount(count.getMonthCount())
+                .grantDayCount(count.getDayCount())
+                .build();
+        if (activityOrderDao.insert(order) != 1) {
+            throw new IllegalStateException("Failed to persist purchase order");
+        }
+        if (activityAccountDao.grantDrawRights(userId, activityId,
+                count.getTotalCount(), count.getMonthCount(), count.getDayCount()) <= 0) {
+            throw new IllegalStateException("Failed to grant draw qualification");
+        }
+        Integer rebateCount = skuRebateDao.selectConfiguredCount(skuId);
+        if (rebateCount != null) {
+            if (rebateCount <= 0) throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode());
+            SkuRebateOrder rebate = new SkuRebateOrder();
+            rebate.setPurchaseOrderId(order.getOrderId());
+            rebate.setUserId(userId);
+            rebate.setActivityId(activityId);
+            rebate.setRebateDrawCount(rebateCount);
+            if (skuRebateDao.insertOrder(rebate) != 1) {
+                throw new IllegalStateException("Failed to persist rebate task");
+            }
+        }
+        outboxService.append("SKU_QUALIFICATION_GRANTED", "sku-granted:" + businessNo,
+                order.getOrderId(), userId, Map.of(
+                        "schemaVersion", 1,
+                        "purchaseOrderId", order.getOrderId(),
+                        "paymentOrderNo", businessNo,
+                        "userId", userId,
+                        "activityId", activityId,
+                        "skuId", skuId,
+                        "grantCount", count.getTotalCount()));
+        return toOrderEntity(order);
     }
 
     @Override
-    public boolean deductUserDailyQuota(String userId, Long activityId) {
+    @Transactional(rollbackFor = Exception.class)
+    public QualificationRevokeResult revokePurchase(String userId, Long activityId, Long skuId,
+                                                     String paymentOrderNo, String refundEventId) {
+        ActivityOrder order = activityOrderDao.selectByUserIdAndOutBusinessNoForUpdate(userId, paymentOrderNo);
+        if (order == null || !activityId.equals(order.getActivityId()) || !skuId.equals(order.getSkuId())) {
+            throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode(), "Original purchase was not found");
+        }
+        if (order.getOrderStatus() == 4 || order.getOrderStatus() == 5) {
+            return QualificationRevokeResult.builder().purchaseOrderId(order.getOrderId())
+                    .manualReview(order.getOrderStatus() == 5)
+                    .removedUnusedCount(value(order.getRefundRemovedCount()))
+                    .consumedExposureCount(value(order.getRefundExposureCount())).build();
+        }
+        if (order.getOrderStatus() != 3) {
+            throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode(), "Purchase is not refundable");
+        }
 
-        String today = LocalDate.now().toString();
-        String key = DAILY_QUOTA_KEY + userId + ":" + activityId + ":" + today;
+        SkuRebateOrder rebate = skuRebateDao.selectForUpdate(order.getOrderId());
+        int completedRebate = rebate != null && Integer.valueOf(1).equals(rebate.getStatus())
+                ? rebate.getRebateDrawCount() : 0;
+        ActivityAccount account = activityAccountDao.selectForUpdate(userId, activityId);
+        if (account == null) throw new IllegalStateException("Draw account is missing");
 
-        if (!redisService.isExists(key)) {
-            ActivityAccount account = activityAccountDao.selectByUserIdAndActivityId(userId, activityId);
-            if (account == null) {
-                throw new AppException(ResponseCode.DRAW_COUNT_NOT_ENOUGH.getInfo());
+        boolean manual = false;
+        int removed = 0;
+        int exposure = 0;
+        try {
+            RefundQualificationPolicy.Decision decision = RefundQualificationPolicy.decide(
+                    order.getGrantTotalCount(), completedRebate, account.getTotalCountSurplus());
+            removed = decision.removedUnusedCount();
+            exposure = decision.consumedExposureCount();
+            if (activityAccountDao.revokeFiniteRights(userId, activityId,
+                    decision.grantedCount(), decision.removedUnusedCount()) != 1) {
+                throw new IllegalStateException("Failed to revoke draw qualification");
             }
-            int dayLimit = account.getDayCount() != null ? account.getDayCount() : 5;
-            redisService.setAtomicLong(key, dayLimit);
-            LocalDateTime endOfDay = LocalDate.now().atTime(23, 59, 59);
-            long ttl = ChronoUnit.SECONDS.between(LocalDateTime.now(), endOfDay);
-            redisService.setExpire(key, ttl, TimeUnit.SECONDS);
+        } catch (IllegalArgumentException e) {
+            manual = true;
+            exposure = -1;
+            if (activityAccountDao.quarantineSurplus(userId, activityId) != 1) {
+                throw new IllegalStateException("Failed to quarantine unlimited qualification", e);
+            }
         }
 
-        long remaining = redisService.decr(key);
-        if (remaining < 0) {
-            redisService.incrBy(key, 1L);
-            return false;
+        if (rebate != null) skuRebateDao.cancel(order.getOrderId());
+        int refundStatus = manual ? 5 : 4;
+        if (activityOrderDao.markRefunded(order.getOrderId(), refundEventId, refundStatus,
+                removed, exposure) != 1) {
+            throw new IllegalStateException("Purchase refund state changed");
         }
+        inventoryBucketService.releaseSku(paymentOrderNo);
+        Integer monthCap = activityOrderDao.selectMaxActiveMonthCap(userId, activityId);
+        Integer dayCap = activityOrderDao.selectMaxActiveDayCap(userId, activityId);
+        if (activityAccountDao.setPeriodLimits(userId, activityId,
+                monthCap == null ? 0 : monthCap, dayCap == null ? 0 : dayCap) != 1) {
+            throw new IllegalStateException("Failed to recalculate period limits");
+        }
+        String eventType = manual ? "SKU_REFUND_MANUAL_REVIEW" : "SKU_QUALIFICATION_REVOKED";
+        outboxService.append(eventType, "sku-refund:" + refundEventId, order.getOrderId(),
+                userId, Map.of(
+                        "schemaVersion", 1,
+                        "purchaseOrderId", order.getOrderId(),
+                        "paymentOrderNo", paymentOrderNo,
+                        "refundEventId", refundEventId,
+                        "userId", userId,
+                        "activityId", activityId,
+                        "skuId", skuId,
+                        "removedUnusedCount", removed,
+                        "consumedExposureCount", exposure,
+                        "manualReview", manual));
+        return QualificationRevokeResult.builder().purchaseOrderId(order.getOrderId())
+                .manualReview(manual).removedUnusedCount(removed)
+                .consumedExposureCount(exposure).build();
+    }
 
-        int affected = activityAccountDao.deductDaySurplus(userId, activityId);
-        if (affected == 0) {
-            redisService.incrBy(key, 1L);
-            return false;
-        }
-        return true;
+    private int value(Integer value) { return value == null ? 0 : value; }
+
+    private ActivityOrderEntity toOrderEntity(ActivityOrder order) {
+        return ActivityOrderEntity.builder()
+                .orderId(order.getOrderId())
+                .userId(order.getUserId())
+                .activityId(order.getActivityId())
+                .skuId(order.getSkuId())
+                .strategyId(order.getStrategyId())
+                .orderStatus(order.getOrderStatus())
+                .pointsCost(order.getPointsCost())
+                .outBusinessNo(order.getOutBusinessNo())
+                .grantTotalCount(order.getGrantTotalCount())
+                .grantMonthCount(order.getGrantMonthCount())
+                .grantDayCount(order.getGrantDayCount())
+                .refundRemovedCount(order.getRefundRemovedCount())
+                .refundExposureCount(order.getRefundExposureCount())
+                .build();
+    }
+
+    @Override
+    public void updateOrderUsed(String orderId) {
+        activityOrderDao.updateOrderStatus(orderId, 1);
+    }
+
+    @Override
+    public ActivityOrderEntity queryUnusedOrder(String userId, Long skuId) {
+        return activityOrderDao.queryUnusedOrder(userId,skuId);
     }
 
     @Override
     public ActivityEntity queryActivityById(Long activityId) {
         Activity res = activityDao.selectByActivityId(activityId);
+        if (res == null) return null;
         return    ActivityEntity.builder()
                       .activityId(res.getActivityId())
                       .strategyId(res.getStrategyId())
@@ -228,6 +285,22 @@ public class ActivityRepository implements IActivityRepository {
             ans.add(req);
         }
         return ans;
+    }
+
+    @Override
+    public ActivitySkuEntity queryActivitySku(Long skuId) {
+        ActivitySku res = activitySkuDao.selectBySkuId(skuId);
+        if (res == null) return null;
+        return ActivitySkuEntity.builder()
+                  .skuId(res.getSkuId())
+                  .activityId(res.getActivityId())
+                  .skuType(res.getSkuType())
+                  .pointsCost(res.getPointsCost())
+                  .activityCountId(res.getActivityCountId())
+                  .stockCount(res.getStockCount())
+                  .stockSurplus(res.getStockSurplus())
+                  .status(res.getStatus())
+                  .build();
     }
 
 }

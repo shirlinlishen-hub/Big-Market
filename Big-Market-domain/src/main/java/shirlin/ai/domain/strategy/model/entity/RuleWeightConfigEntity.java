@@ -42,12 +42,12 @@ public class RuleWeightConfigEntity {
     }
 
     public WeightGroup getMatchedGroup(int userThresholdValue) {
-        for (WeightGroup group : groups) {
-            if (group.getThresholdValue() <= userThresholdValue) {
-                return group;
-            }
-        }
-        return null;
+        if (groups == null) return null;
+        return groups.stream()
+                .filter(group -> group != null && group.getThresholdValue() != null
+                        && group.getThresholdValue() <= userThresholdValue)
+                .max(java.util.Comparator.comparing(WeightGroup::getThresholdValue))
+                .orElse(null);
     }
 
     public Map<Integer, BigDecimal> getAwardRates(int userThresholdValue) {

@@ -1,0 +1,127 @@
+# ============================================
+# ShardingSphere-JDBC 分库分表配置
+# ============================================
+
+mode:
+  type: Standalone
+  repository:
+    type: JDBC
+
+# ------ 数据源定义 ------
+dataSources:
+  #配置数据源
+  ds:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://159.75.79.79:13306/Big-Market?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    maximumPoolSize: 20
+    minimumIdle: 5
+
+  # 数据源0: lottery_db_00
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://159.75.79.79:13306/lottery_db_00?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    maximumPoolSize: 20
+    minimumIdle: 5
+
+  # 数据源1: lottery_db_01
+  ds_1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://159.75.79.79:13306/lottery_db_01?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    maximumPoolSize: 20
+    minimumIdle: 5
+
+rules:
+  - !SHARDING
+
+    # ====== 分片表配置 ======
+    tables:
+
+      # --- 活动订单表 ---
+      activity_order:
+        # 实际数据节点: ds_0.activity_order_000 ~ ds_1.activity_order_003
+        actualDataNodes: ds_${0..1}.activity_order_00${0..3}
+        databaseStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: db_hash_mod
+        tableStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: table_hash_mod
+
+      # --- 活动账户表 ---
+      activity_account:
+        actualDataNodes: ds_${0..1}.activity_account_00${0..3}
+        databaseStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: db_hash_mod
+        tableStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: table_hash_mod
+
+      # --- 运气值表 ---
+      user_luck_account:
+        actualDataNodes: ds_${0..1}.user_luck_account_00${0..3}
+        databaseStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: db_hash_mod
+        tableStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: table_hash_mod
+
+      # --- 中奖记录表 ---
+      user_award_record:
+        actualDataNodes: ds_${0..1}.user_award_record_00${0..3}
+        databaseStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: db_hash_mod
+        tableStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: table_hash_mod
+
+    # ====== 不分片的表(配置类) ======
+    # 这些表只存在于 ds 中，所有数据源都路由到 ds
+    defaultDatabaseStrategy:
+      none:
+    defaultTableStrategy:
+      none:
+
+    # ====== 分片算法定义 ======
+    shardingAlgorithms:
+
+      # 分库算法: user_id 的 hashCode 对 2 取模 → 决定 ds_0 还是 ds_1
+      db_hash_mod:
+        type: HASH_MOD
+        props:
+          sharding-count: 2
+
+      # 分表算法: user_id 的 hashCode 对 4 取模 → 决定 000/001/002/003
+      table_hash_mod:
+        type: HASH_MOD
+        props:
+          sharding-count: 4
+
+  # ====== 单表规则 ======
+  # 不在 tables 里声明的表，ShardingSphere 默认去所有数据源找
+  # 配置类的表只在 ds 里，需要指定默认数据源
+  - !SINGLE
+    defaultDataSource: ds
+
+props:
+  # 开发阶段打印实际执行的SQL和路由信息，生产环境改为 false
+  sql-show: true

@@ -36,6 +36,9 @@ public class RuleWeightFilter implements ILogicHandler<RaffleFactorEntity, Strat
 
         //获取权重配置规则
         RuleWeightConfigEntity weightConfig = JSON.parseObject(rule.getRuleValue(), RuleWeightConfigEntity.class);
+        if (weightConfig == null || !"draw_count".equals(weightConfig.getThresholdKey())) {
+            throw new IllegalArgumentException("Unsupported weight threshold metric");
+        }
 
         //获取用户的thresholdValue值
         int userThresholdValue = strategyRepository.queryUserThresholdValue(

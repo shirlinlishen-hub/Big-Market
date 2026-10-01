@@ -22,6 +22,9 @@ public interface IUserAwardRecordDao {
     List<UserAwardRecord> selectByUserId(@Param("userId") String userId);
 
     int updateAwardState(@Param("id") Long id, @Param("awardState") Integer awardState);
+    int updateAwardStateByOrder(@Param("userId") String userId,
+                                @Param("orderId") String orderId,
+                                @Param("awardState") Integer awardState);
 
     List<UserAwardRecord> selectByAwardState(@Param("awardState") Integer awardState);
 
@@ -31,7 +34,8 @@ public interface IUserAwardRecordDao {
 
     int insertOrder(UserAwardRecord userAwardRecordPO);
 
-    int updateOrderResult(@Param("orderId") Long orderId,
+    int updateOrderResult(@Param("userId") String userId,
+                          @Param("orderId") Long orderId,
                           @Param("awardId") Integer awardId,
                           @Param("awardType") Integer awardType);
 }

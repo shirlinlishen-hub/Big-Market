@@ -28,30 +28,18 @@ public interface IStrategyRepository {
 
     void storeStrategyPrecision(Long strategyId, int precision);
 
-    void storeStrategyMaxAward(Long strategyId, StrategyAwardEntity maxAward);
-
     int getStrategyPrecision(Long strategyId);
 
     List<AwardRateRange> getStrategyRangeTable(Long strategyId);
 
-    StrategyAwardEntity getStrategyMaxAward(Long strategyId);
-
-    List<AwardRateRange> getOrBuildSubRangeTable(Long strategyId, Set<Integer> excludeAwardIds, String cacheKey);
+    List<AwardRateRange> buildSubRangeTable(Long strategyId, Set<Integer> excludeAwardIds);
 
     void storeWeightRangeTable(Long strategyId, String groupId, List<AwardRateRange> table);
 
     List<AwardRateRange> getWeightRangeTable(Long strategyId, String groupId);
 
-    // ---- 奖品库存操作（规则树 Stock 节点，Redis decr 原子扣减） ----
-
-    /** 预扣奖品库存；返回 true 表示扣减成功（有剩余库存），false 表示库存耗尽 */
-    boolean deductStock(Long strategyId, Integer awardId);
-
-    /** 装配时初始化奖品库存到 Redis（awardSurplus 为 null 则跳过，视为无限库存） */
-    void cacheStrategyAwardStock(Long strategyId, Integer awardId, Integer awardSurplus);
-
-    /** 从 Redis 兜底缓存中获取最大概率奖品的 awardId */
-    Integer queryMaxAwardId(Long strategyId);
+    /** Resolve and validate the explicit unlimited-stock fallback award. */
+    Integer queryFallbackAwardId(Long strategyId);
 
     // ---- 用户状态查询 ----
 
@@ -60,14 +48,5 @@ public interface IStrategyRepository {
 
     /** 查询用户权重值（当前实现 = 累计抽奖次数，可按需扩展） */
     int queryUserThresholdValue(String userId, Long strategyId);
-
-    /** 查询用户运气值 */
-    int queryUserLuckValue(String userId, Long strategyId);
-
-    /** 运气值 +1 */
-    void incrementLuckValue(String userId, Long strategyId);
-
-    /** 重置运气值为 0 */
-    void resetUserLuckValue(String userId, Long strategyId);
 
 }

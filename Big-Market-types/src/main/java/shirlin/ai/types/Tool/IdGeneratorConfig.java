@@ -1,0 +1,16 @@
+package shirlin.ai.types.Tool;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class IdGeneratorConfig {
+
+    @Bean
+    public SnowflakeIdGenerator snowflakeIdGenerator(
+            @Value("${id-generator.worker-id:1}") long workerId,
+            @Value("${id-generator.data-center-id:1}") long dataCenterId) {
+        return new SnowflakeIdGenerator(workerId, dataCenterId);
+    }
+}

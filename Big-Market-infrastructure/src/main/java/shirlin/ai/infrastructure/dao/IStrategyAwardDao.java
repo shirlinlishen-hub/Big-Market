@@ -20,7 +20,6 @@ public interface IStrategyAwardDao {
 
     StrategyAward selectByStrategyIdAndAwardId(@Param("strategyId") Long strategyId, @Param("awardId") Integer awardId);
 
-    int updateAwardSurplus(@Param("id") Long id, @Param("surplus") Integer surplus);
-
     int batchInsert(List<StrategyAward> list);
+
 }

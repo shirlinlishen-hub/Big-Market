@@ -16,6 +16,7 @@ public class UserAwardRecord {
     private Long id;
     private String userId;
     private Long strategyId;
+    private String raffleOrderId;
     private Integer awardId;
     private Integer awardType;
     private String awardContent;

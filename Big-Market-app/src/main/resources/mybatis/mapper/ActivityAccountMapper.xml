@@ -28,40 +28,22 @@
                 #{monthCountSurplus}, #{dayCount}, #{dayCountSurplus}, NOW(), NOW())
     </insert>
 
-    <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.ActivityAccount">
-        UPDATE activity_account
-        SET user_id = #{userId},
-            activity_id = #{activityId},
-            total_count = #{totalCount},
-            total_count_surplus = #{totalCountSurplus},
-            month_count = #{monthCount},
-            month_count_surplus = #{monthCountSurplus},
-            day_count = #{dayCount},
-            day_count_surplus = #{dayCountSurplus},
-            update_time = NOW()
-        WHERE id = #{id}
-    </update>
-
-    <delete id="deleteById" parameterType="java.lang.Long">
-        DELETE FROM activity_account WHERE id = #{id}
-    </delete>
-
-    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" /> FROM activity_account WHERE id = #{id}
-    </select>
-
     <select id="selectByUserIdAndActivityId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" /> FROM activity_account
         WHERE user_id = #{userId} AND activity_id = #{activityId}
     </select>
+    <select id="selectForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_account
+        WHERE user_id = #{userId} AND activity_id = #{activityId} FOR UPDATE
+    </select>
 
     <update id="deductTotalSurplus">
         UPDATE activity_account
-        SET total_count_surplus = total_count_surplus - 1,
+        SET total_count_surplus = IF(total_count_surplus = -1, -1, total_count_surplus - 1),
             update_time = NOW()
         WHERE user_id = #{userId}
           AND activity_id = #{activityId}
-          AND total_count_surplus > 0
+          AND (total_count_surplus > 0 OR total_count_surplus = -1)
     </update>
 
     <update id="deductMonthSurplus">
@@ -80,6 +62,56 @@
         WHERE user_id = #{userId}
           AND activity_id = #{activityId}
           AND day_count_surplus > 0
+    </update>
+
+    <insert id="grantDrawRights">
+        INSERT INTO activity_account
+            (user_id, activity_id, total_count, total_count_surplus,
+             month_count, month_count_surplus, day_count, day_count_surplus,
+             create_time, update_time)
+        VALUES (#{userId}, #{activityId}, #{totalCount}, #{totalCount},
+                #{monthCount}, #{monthCount}, #{dayCount}, #{dayCount}, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            total_count = IF(total_count = -1 OR VALUES(total_count) = -1,
+                             -1, total_count + VALUES(total_count)),
+            total_count_surplus = IF(total_count_surplus = -1 OR VALUES(total_count_surplus) = -1,
+                                     -1, total_count_surplus + VALUES(total_count_surplus)),
+            month_count = IF(month_count = -1 OR VALUES(month_count) = -1,
+                             -1, GREATEST(month_count, VALUES(month_count))),
+            day_count = IF(day_count = -1 OR VALUES(day_count) = -1,
+                           -1, GREATEST(day_count, VALUES(day_count))),
+            update_time = NOW()
+    </insert>
+
+    <update id="restoreTotalSurplus">
+        UPDATE activity_account
+        SET total_count_surplus = IF(total_count_surplus = -1, -1, total_count_surplus + 1),
+            update_time = NOW()
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
+    </update>
+    <update id="grantTotalOnly">
+        UPDATE activity_account
+        SET total_count = IF(total_count = -1, -1, total_count + #{count}),
+            total_count_surplus = IF(total_count_surplus = -1, -1, total_count_surplus + #{count}),
+            update_time = NOW()
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
+    </update>
+    <update id="revokeFiniteRights">
+        UPDATE activity_account
+        SET total_count = GREATEST(0, total_count - #{grantedCount}),
+            total_count_surplus = GREATEST(0, total_count_surplus - #{removeSurplus}),
+            update_time = NOW()
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
+          AND total_count &gt;= 0 AND total_count_surplus &gt;= 0
+    </update>
+    <update id="quarantineSurplus">
+        UPDATE activity_account SET total_count_surplus = 0, update_time = NOW()
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
+    </update>
+    <update id="setPeriodLimits">
+        UPDATE activity_account SET month_count = #{monthCount}, day_count = #{dayCount},
+            update_time = NOW()
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
     </update>
 
 </mapper>

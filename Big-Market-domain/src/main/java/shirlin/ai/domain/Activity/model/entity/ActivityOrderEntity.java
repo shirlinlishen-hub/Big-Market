@@ -1,4 +1,4 @@
-package shirlin.ai.infrastructure.dao.po;
+package shirlin.ai.domain.Activity.model.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,9 +11,8 @@ import java.util.Date;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ActivityOrder {
+public class ActivityOrderEntity {
 
-    private Long id;
     private String orderId;
     private String userId;
     private Long activityId;
@@ -25,10 +24,7 @@ public class ActivityOrder {
     private Integer grantTotalCount;
     private Integer grantMonthCount;
     private Integer grantDayCount;
-    private String refundEventId;
     private Integer refundRemovedCount;
     private Integer refundExposureCount;
-    private Date refundTime;
-    private Date createTime;
-    private Date updateTime;
+
 }

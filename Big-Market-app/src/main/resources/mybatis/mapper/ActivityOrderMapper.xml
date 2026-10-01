@@ -12,20 +12,31 @@
         <result column="order_status" property="orderStatus" />
         <result column="points_cost" property="pointsCost" />
         <result column="out_business_no" property="outBusinessNo" />
+        <result column="grant_total_count" property="grantTotalCount" />
+        <result column="grant_month_count" property="grantMonthCount" />
+        <result column="grant_day_count" property="grantDayCount" />
+        <result column="refund_event_id" property="refundEventId" />
+        <result column="refund_removed_count" property="refundRemovedCount" />
+        <result column="refund_exposure_count" property="refundExposureCount" />
+        <result column="refund_time" property="refundTime" />
         <result column="create_time" property="createTime" />
         <result column="update_time" property="updateTime" />
     </resultMap>
 
     <sql id="Base_Column_List">
         id, order_id, user_id, activity_id, sku_id, strategy_id, order_status,
-        points_cost, out_business_no, create_time, update_time
+        points_cost, out_business_no, grant_total_count, grant_month_count, grant_day_count,
+        refund_event_id, refund_removed_count, refund_exposure_count, refund_time,
+        create_time, update_time
     </sql>
 
     <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.ActivityOrder" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO activity_order (order_id, user_id, activity_id, sku_id, strategy_id, order_status,
-                                    points_cost, out_business_no, create_time, update_time)
+                                    points_cost, out_business_no, grant_total_count, grant_month_count,
+                                    grant_day_count, create_time, update_time)
         VALUES (#{orderId}, #{userId}, #{activityId}, #{skuId}, #{strategyId}, #{orderStatus},
-                #{pointsCost}, #{outBusinessNo}, NOW(), NOW())
+                #{pointsCost}, #{outBusinessNo}, #{grantTotalCount}, #{grantMonthCount},
+                #{grantDayCount}, NOW(), NOW())
     </insert>
 
     <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.ActivityOrder">
@@ -58,6 +69,15 @@
         SELECT <include refid="Base_Column_List" /> FROM activity_order WHERE out_business_no = #{outBusinessNo}
     </select>
 
+    <select id="selectByUserIdAndOutBusinessNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_order
+        WHERE user_id = #{userId} AND out_business_no = #{outBusinessNo}
+    </select>
+    <select id="selectByUserIdAndOutBusinessNoForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM activity_order
+        WHERE user_id = #{userId} AND out_business_no = #{outBusinessNo} FOR UPDATE
+    </select>
+
     <select id="selectByUserIdAndActivityId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" /> FROM activity_order
         WHERE user_id = #{userId} AND activity_id = #{activityId}
@@ -70,5 +90,28 @@
             update_time = NOW()
         WHERE order_id = #{orderId}
     </update>
+
+    <select id="countGrantedOrders" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM activity_order
+        WHERE user_id = #{userId} AND activity_id = #{activityId} AND order_status = 3
+    </select>
+    <update id="markRefunded">
+        UPDATE activity_order SET order_status = #{status}, refund_event_id = #{refundEventId},
+            refund_removed_count = #{removedCount}, refund_exposure_count = #{exposureCount},
+            refund_time = NOW(), update_time = NOW()
+        WHERE order_id = #{orderId} AND order_status = 3
+    </update>
+    <select id="selectMaxActiveMonthCap" resultType="java.lang.Integer">
+        SELECT CASE WHEN SUM(grant_month_count = -1) &gt; 0 THEN -1
+                    ELSE COALESCE(MAX(grant_month_count), 0) END
+        FROM activity_order
+        WHERE user_id = #{userId} AND activity_id = #{activityId} AND order_status = 3
+    </select>
+    <select id="selectMaxActiveDayCap" resultType="java.lang.Integer">
+        SELECT CASE WHEN SUM(grant_day_count = -1) &gt; 0 THEN -1
+                    ELSE COALESCE(MAX(grant_day_count), 0) END
+        FROM activity_order
+        WHERE user_id = #{userId} AND activity_id = #{activityId} AND order_status = 3
+    </select>
 
 </mapper>

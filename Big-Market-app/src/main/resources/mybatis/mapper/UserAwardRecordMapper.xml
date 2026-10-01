@@ -6,6 +6,7 @@
         <id column="id" property="id" />
         <result column="user_id" property="userId" />
         <result column="strategy_id" property="strategyId" />
+        <result column="raffle_order_id" property="raffleOrderId" />
         <result column="award_id" property="awardId" />
         <result column="award_type" property="awardType" />
         <result column="award_content" property="awardContent" />
@@ -16,14 +17,14 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, user_id, strategy_id, award_id, award_type, award_content, award_state,
+        id, user_id, strategy_id, raffle_order_id, award_id, award_type, award_content, award_state,
         draw_time, create_time, update_time
     </sql>
 
     <insert id="insert" parameterType="shirlin.ai.infrastructure.dao.po.UserAwardRecord" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user_award_record (user_id, strategy_id, award_id, award_type, award_content,
+        INSERT INTO user_award_record (user_id, strategy_id, raffle_order_id, award_id, award_type, award_content,
                                        award_state, draw_time, create_time, update_time)
-        VALUES (#{userId}, #{strategyId}, #{awardId}, #{awardType}, #{awardContent},
+        VALUES (#{userId}, #{strategyId}, #{raffleOrderId}, #{awardId}, #{awardType}, #{awardContent},
                 #{awardState}, #{drawTime}, NOW(), NOW())
     </insert>
 
@@ -62,6 +63,10 @@
     <update id="updateAwardState">
         UPDATE user_award_record SET award_state = #{awardState}, update_time = NOW() WHERE id = #{id}
     </update>
+    <update id="updateAwardStateByOrder">
+        UPDATE user_award_record SET award_state = #{awardState}, update_time = NOW()
+        WHERE user_id = #{userId} AND raffle_order_id = #{orderId} AND award_state = 0
+    </update>
 
     <select id="selectByAwardState" parameterType="java.lang.Integer" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" /> FROM user_award_record WHERE award_state = #{awardState}
@@ -75,7 +80,7 @@
 
     <select id="countByUserIdAndStrategyId" resultType="java.lang.Integer">
         SELECT COUNT(*) FROM user_award_record
-        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId} AND award_id &gt; 0
     </select>
 
     <!-- 阶段一事务：创建参与订单（state=0 占位，awardId=0 抽奖后回填） -->
@@ -94,7 +99,7 @@
             award_type  = #{awardType},
             award_state = 1,
             update_time = NOW()
-        WHERE id = #{orderId}
+        WHERE id = #{orderId} AND user_id = #{userId}
     </update>
 
 </mapper>

@@ -19,6 +19,18 @@
         INSERT INTO user_luck_account (user_id, strategy_id, luck_value, create_time, update_time)
         VALUES (#{userId}, #{strategyId}, #{luckValue}, NOW(), NOW())
     </insert>
+    <insert id="insertIfAbsent">
+        INSERT IGNORE INTO user_luck_account (user_id, strategy_id, luck_value, create_time, update_time)
+        VALUES (#{userId}, #{strategyId}, 0, NOW(), NOW())
+    </insert>
+    <select id="selectForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM user_luck_account
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId} FOR UPDATE
+    </select>
+    <update id="setLuckValue">
+        UPDATE user_luck_account SET luck_value = #{luckValue}, update_time = NOW()
+        WHERE user_id = #{userId} AND strategy_id = #{strategyId}
+    </update>
 
     <update id="updateById" parameterType="shirlin.ai.infrastructure.dao.po.UserLuckAccount">
         UPDATE user_luck_account

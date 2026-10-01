@@ -38,7 +38,7 @@ public class RuleBlacklistFilter implements ILogicHandler<RaffleFactorEntity, St
                     //返回非null，链立即停止
                     return RuleFilterResultEntity.builder()
                             .type(RuleFilterResultEntity.Type.TAKE_OVER)
-                            .awardId(config.getAwardId())
+                            .awardId(strategyRepository.queryFallbackAwardId(factory.getStrategyId()))
                             .build();
                 }
             }

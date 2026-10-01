@@ -3,11 +3,12 @@ package shirlin.ai.domain.strategy.service.Raffle;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
 import shirlin.ai.domain.Activity.model.entity.ActivityFactorEntity;
+import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
+import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RaffleResultEntity;
-import shirlin.ai.domain.Activity.service.Rule.Chain.ActivityChainHandlerFactory;
+import shirlin.ai.domain.strategy.model.entity.DrawOrderEntity;
 import shirlin.ai.domain.strategy.service.IRaffleService;
 import shirlin.ai.domain.strategy.service.IRaffleStrategy;
 import shirlin.ai.types.enums.ResponseCode;
@@ -16,38 +17,43 @@ import shirlin.ai.types.exception.AppException;
 /**
  * 抽奖服务编排
  *
- * Phase 1 — 活动校验责任链 ActivityChain（ActivityInfoCheck → ActivitySkuStock）
- * Phase 2 — 事务：创建参与订单 + 扣减总/月/日额度
- * Phase 3 — 执行抽奖（策略链 + 规则树）
- * Phase 4 — 回填订单结果
+ * Reserve quota, run the strategy, then persist the award and delivery task.
  */
 @Slf4j
 @Service
 public class RaffleService implements IRaffleService {
 
     @Resource
-    private ActivityChainHandlerFactory activityChainHandlerFactory;
-
-    @Resource
-    private IActivityRepository activityRepository;
-
-    @Resource
     private IRaffleStrategy raffleStrategy;
 
     @Resource
     private RaffleOrderService raffleOrderService;
+    @Resource
+    private IActivityRepository activityRepository;
 
     @Override
     public RaffleResultEntity doRaffle(ActivityFactorEntity factor) {
+        if (factor == null || factor.getActivityId() == null || factor.getUserId() == null
+                || factor.getUserId().isBlank() || factor.getOutBusinessNo() == null
+                || factor.getOutBusinessNo().isBlank()) {
+            throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode());
+        }
+        ActivityEntity activity = activityRepository.queryActivityById(factor.getActivityId());
+        if (activity == null || activity.getStrategyId() == null || activity.getStatus() == null
+                || activity.getStatus() != 1) {
+            throw new AppException(ResponseCode.ACTIVITY_NOT_EXISTS.getCode());
+        }
+        factor.setStrategyId(activity.getStrategyId());
+        DrawOrderEntity order = raffleOrderService.reserveDraw(factor);
+        if (order.getStatus() == 1) {
+            return RaffleResultEntity.builder()
+                    .awardId(order.getAwardId()).awardType(order.getAwardType()).build();
+        }
+        if (!order.isNewlyCreated()) {
+            throw new AppException(ResponseCode.UN_ERROR.getCode(), "抽奖正在处理中");
+        }
 
-
-        // 1：活动校验责任链
-        activityChainHandlerFactory.getChainHead().apply(factor);
-
-        // 2：事务内操作（创建订单 + 扣减三层额度）
-        Long orderId = raffleOrderService.createOrderAndDeductQuota(factor);
-
-        // 3：执行抽奖（策略链 + 规则树）
+        // The post-draw rules and stock reservation execute in completeDraw's transaction.
         RaffleFactorEntity raffleFactorEntity = RaffleFactorEntity.builder()
                 .userId(factor.getUserId())
                 .strategyId(factor.getStrategyId())
@@ -55,12 +61,15 @@ public class RaffleService implements IRaffleService {
         RaffleResultEntity result;
         try {
             result = raffleStrategy.performRaffle(raffleFactorEntity);
+            result = raffleOrderService.completeDraw(order, result);
         } catch (Exception e) {
+            try {
+                raffleOrderService.cancelFailedDraw(order);
+            } catch (Exception compensationError) {
+                e.addSuppressed(compensationError);
+            }
             throw new AppException(ResponseCode.UN_ERROR.getCode(), "抽奖执行失败: " + e.getMessage(), e);
         }
-
-        // 4：回填订单
-        activityRepository.updateUserRaffleOrder(orderId, result.getAwardId(), result.getAwardType());
 
         log.info("抽奖完成 userId:{} strategyId:{} awardId:{}", factor.getUserId(), factor.getStrategyId(), result.getAwardId());
         return result;

@@ -2,24 +2,28 @@ package shirlin.ai.domain.strategy.service.Armory;
 
 import com.alibaba.fastjson2.JSON;
 import jakarta.annotation.Resource;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
 import shirlin.ai.domain.strategy.model.entity.AwardRateRange;
+import shirlin.ai.domain.strategy.model.entity.RuleBlacklistConfigEntity;
+import shirlin.ai.domain.strategy.model.entity.RuleLockConfigEntity;
+import shirlin.ai.domain.strategy.model.entity.RuleLuckConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.RuleWeightConfigEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
 import shirlin.ai.domain.strategy.model.valobj.RuleTypeVO;
 import shirlin.ai.domain.strategy.service.IStrategyArmory;
+import shirlin.ai.domain.strategy.service.Rule.FallbackAwardPolicy;
+import shirlin.ai.domain.strategy.service.Rule.PostDrawRulePolicy;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.*;
 
-@Slf4j
 @Service
 public class StrategyArmory  implements IStrategyArmory {
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     @Resource
     private IStrategyRepository strategyRepository;
@@ -35,60 +39,95 @@ public class StrategyArmory  implements IStrategyArmory {
 
         //1. 查询当前Strategy下的所有奖品
         List<StrategyAwardEntity> awards = strategyRepository.queryStrategyAwardListById(StrategyId);
+        if (awards == null || awards.isEmpty()) {
+            throw new IllegalArgumentException("Strategy has no awards");
+        }
 
         //2. 获取概率精度
         StrategyEntity strategy = strategyRepository.queryStrategyById(StrategyId);
+        if (strategy == null || strategy.getProbabilityPrecision() == null) {
+            throw new IllegalArgumentException("Strategy probability configuration is missing");
+        }
+        if (strategy.getTotalProbability() == null
+                || strategy.getTotalProbability().compareTo(BigDecimal.ONE) != 0) {
+            throw new IllegalArgumentException("Strategy total probability must equal 1");
+        }
         int precision = strategy.getProbabilityPrecision();
 
         //3. 生成概率区间表
-        List<AwardRateRange> rangeTable = new ArrayList<>();
-        int currentStart = 0;
-        for(StrategyAwardEntity award : awards){
-            int rangeWidth = (int)(award.getAwardRate().doubleValue()*precision);
-            rangeTable.add(new AwardRateRange(award.getAwardId(),currentStart,currentStart + rangeWidth));
-            currentStart += rangeWidth;
-        }
-
-        //4. 缓存概率区间表、精度、兜底奖品
-        Optional<StrategyAwardEntity> max_award = awards.stream().max(Comparator.comparing(StrategyAwardEntity::getAwardRate));
-        strategyRepository.storeStrategyAwardRangeTable(StrategyId, rangeTable);
-        strategyRepository.storeStrategyPrecision(StrategyId, precision);
-        max_award.ifPresent(award -> strategyRepository.storeStrategyMaxAward(StrategyId, award));
-
-        //5. 初始化各奖品库存到 Redis（awardSurplus 为 null 则视为无限库存，跳过缓存）
+        Map<Integer, BigDecimal> defaultRates = new HashMap<>();
         for (StrategyAwardEntity award : awards) {
-            strategyRepository.cacheStrategyAwardStock(StrategyId, award.getAwardId(), award.getAwardSurplus());
-        }
-
-        //6. 若配置了权重规则，按各分组的概率覆盖构建专属区间表
-        StrategyRuleEntity weightRule = strategyRepository.queryStrategyRuleByModel(
-                StrategyId, RuleTypeVO.RULEWEIGHT.getRuleModel());
-
-        //存在权重配置
-        if (weightRule != null && weightRule.getRuleValue() != null) {
-            RuleWeightConfigEntity weightConfig = JSON.parseObject(weightRule.getRuleValue(), RuleWeightConfigEntity.class);
-            for (RuleWeightConfigEntity.WeightGroup group : weightConfig.getGroups()) {
-                if (group.getAwardRates() == null || group.getAwardRates().isEmpty()) {
-                    log.warn("权重分组 awardRates 未配置，跳过 strategyId:{} groupId:{}", StrategyId, group.getGroupId());
-                    continue;
-                }
-                List<AwardRateRange> weightTable = buildRangeTableFromRates(group.getAwardRates(), precision);
-                strategyRepository.storeWeightRangeTable(StrategyId, group.getGroupId(), weightTable);
-                log.info("权重分组区间表装配完成 strategyId:{} groupId:{} tableSize:{}", StrategyId, group.getGroupId(), weightTable.size());
+            if (award == null || award.getAwardId() == null || award.getAwardId() <= 0
+                    || defaultRates.containsKey(award.getAwardId())) {
+                throw new IllegalArgumentException("Strategy awards contain a missing or duplicate ID");
+            }
+            defaultRates.put(award.getAwardId(), award.getAwardRate());
+            if (award.getAwardCount() == null || award.getAwardSurplus() == null
+                    || award.getAwardCount() < -1
+                    || (award.getAwardCount() == -1 && award.getAwardSurplus() != -1)
+                    || (award.getAwardCount() >= 0 && (award.getAwardSurplus() < 0
+                    || award.getAwardSurplus() > award.getAwardCount()))) {
+                throw new IllegalArgumentException("Strategy award stock configuration is invalid");
             }
         }
-    }
-
-    private List<AwardRateRange> buildRangeTableFromRates(Map<Integer, BigDecimal> awardRates, int precision) {
-        if (awardRates == null || awardRates.isEmpty()) return new ArrayList<>();
-        List<AwardRateRange> table = new ArrayList<>();
-        int currentStart = 0;
-        for (Map.Entry<Integer, BigDecimal> entry : awardRates.entrySet()) {
-            int rangeWidth = (int) (entry.getValue().doubleValue() * precision);
-            table.add(new AwardRateRange(entry.getKey(), currentStart, currentStart + rangeWidth));
-            currentStart += rangeWidth;
+        List<AwardRateRange> rangeTable = ProbabilityTableBuilder.build(defaultRates, precision, true);
+        StrategyRuleEntity fallbackRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_fallback");
+        int fallbackId = FallbackAwardPolicy.requireValid(
+                fallbackRule == null ? null : fallbackRule.getRuleValue(), awards);
+        StrategyRuleEntity lockRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_lock");
+        StrategyRuleEntity luckRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_luck");
+        RuleLockConfigEntity lockConfig = lockRule == null ? null
+                : JSON.parseObject(lockRule.getRuleValue(), RuleLockConfigEntity.class);
+        RuleLuckConfigEntity luckConfig = luckRule == null ? null
+                : JSON.parseObject(luckRule.getRuleValue(), RuleLuckConfigEntity.class);
+        if ((lockRule != null && lockConfig == null) || (luckRule != null && luckConfig == null)) {
+            throw new IllegalArgumentException("Post-draw rule configuration is empty");
         }
-        return table;
+        PostDrawRulePolicy.validate(lockConfig, luckConfig, fallbackId);
+        if (lockConfig != null && !defaultRates.keySet().containsAll(lockConfig.getLockedAwardIds())) {
+            throw new IllegalArgumentException("Lock rule references an unknown award");
+        }
+        StrategyRuleEntity blacklistRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_blacklist");
+        if (blacklistRule != null) {
+            RuleBlacklistConfigEntity blacklist = JSON.parseObject(
+                    blacklistRule.getRuleValue(), RuleBlacklistConfigEntity.class);
+            if (blacklist == null || !Integer.valueOf(fallbackId).equals(blacklist.getAwardId())) {
+                throw new IllegalArgumentException("Blacklist award must be the configured fallback");
+            }
+        }
+
+        StrategyRuleEntity weightRule = strategyRepository.queryStrategyRuleByModel(
+                StrategyId, RuleTypeVO.RULEWEIGHT.getRuleModel());
+        Map<String, List<AwardRateRange>> weightTables = new HashMap<>();
+        if (weightRule != null) {
+            RuleWeightConfigEntity weightConfig = JSON.parseObject(weightRule.getRuleValue(), RuleWeightConfigEntity.class);
+            if (weightConfig == null || weightConfig.getGroups() == null || weightConfig.getGroups().isEmpty()
+                    || !"draw_count".equals(weightConfig.getThresholdKey())) {
+                throw new IllegalArgumentException("Unsupported or empty weight rule configuration");
+            }
+            Set<Integer> thresholds = new HashSet<>();
+            for (RuleWeightConfigEntity.WeightGroup group : weightConfig.getGroups()) {
+                if (group == null || group.getGroupId() == null || group.getGroupId().isBlank()
+                        || group.getThresholdValue() == null || group.getThresholdValue() < 0
+                        || !thresholds.add(group.getThresholdValue())
+                        || group.getAwardRates() == null || group.getAwardRates().isEmpty()
+                        || !defaultRates.keySet().containsAll(group.getAwardRates().keySet())) {
+                    throw new IllegalArgumentException("Invalid weight group configuration");
+                }
+                List<AwardRateRange> table = ProbabilityTableBuilder.build(group.getAwardRates(), precision, true);
+                if (weightTables.putIfAbsent(group.getGroupId(), table) != null) {
+                    throw new IllegalArgumentException("Duplicate weight group ID");
+                }
+            }
+        }
+
+        // Publish only after validating the complete strategy configuration.
+        strategyRepository.storeStrategyAwardRangeTable(StrategyId, rangeTable);
+        strategyRepository.storeStrategyPrecision(StrategyId, precision);
+        weightTables.forEach((groupId, table) ->
+                strategyRepository.storeWeightRangeTable(StrategyId, groupId, table));
+
+        // All pools have been validated before publication.
     }
 
     /**
@@ -100,35 +139,14 @@ public class StrategyArmory  implements IStrategyArmory {
     public Integer getRandomAwardId(Long StrategyId) {
         //获取精度
         int precision = strategyRepository.getStrategyPrecision(StrategyId);
-        //生成[0,precision]间的一个随机数
-        int randomValue = new SecureRandom().nextInt(precision);
+        // Ticket range: [0, precision).
+        int randomValue = RANDOM.nextInt(precision);
 
         //从Redis中取出RangeTbale
         List<AwardRateRange> rangeTable = strategyRepository.getStrategyRangeTable(StrategyId);
 
         //二分查找
-        Integer ans = binarySearch(rangeTable,randomValue);
-        if(ans == null || ans.intValue() == -1){
-            return strategyRepository.getStrategyMaxAward(StrategyId).getAwardId();
-        }
-        return ans;
-    }
-
-    private Integer binarySearch(List<AwardRateRange> rangeTable,int randomValue){
-        int left = 0;
-        int right = rangeTable.size()-1;
-        while(left<=right){
-            int mid = (left+right)>>>1;
-            if(rangeTable.get(mid).getRangeEnd()<randomValue){
-                left = mid+1;
-            }else if(rangeTable.get(mid).getRangeStart()>randomValue){
-                right = mid-1;
-            }else if(rangeTable.get(mid).getRangeEnd()>=randomValue && rangeTable.get(mid).getRangeStart()<=randomValue){
-                return rangeTable.get(mid).getAwardId();
-            }
-        }
-        //兜底
-        return -1;
+        return ProbabilityTableBuilder.pick(rangeTable, randomValue);
     }
 
     /**
@@ -138,13 +156,11 @@ public class StrategyArmory  implements IStrategyArmory {
     public Integer getRandomAwardId(Long strategyId, String weightGroupId) {
         List<AwardRateRange> weightTable = strategyRepository.getWeightRangeTable(strategyId, weightGroupId);
         if (weightTable == null || weightTable.isEmpty()) {
-            log.warn("权重区间表未找到 strategyId:{} groupId:{}，降级走默认抽奖", strategyId, weightGroupId);
-            return getRandomAwardId(strategyId);
+            throw new IllegalStateException("Configured weight pool is missing: " + weightGroupId);
         }
         int upperBound = weightTable.get(weightTable.size() - 1).getRangeEnd();
-        int randomVal = new SecureRandom().nextInt(upperBound);
-        Integer result = binarySearch(weightTable, randomVal);
-        return (result == null || result == -1) ? getRandomAwardId(strategyId) : result;
+        int randomVal = RANDOM.nextInt(upperBound);
+        return ProbabilityTableBuilder.pick(weightTable, randomVal);
     }
 
     /**
@@ -159,14 +175,13 @@ public class StrategyArmory  implements IStrategyArmory {
         if (excludeAwardIds == null || excludeAwardIds.isEmpty()) {
             return getRandomAwardId(strategyId);
         }
-        // 用排除后的子集生成临时区间表 (可缓存, key加上排除项hash)
-        String cacheKey = strategyId + "_exclude_" + excludeAwardIds.hashCode();
-        List<AwardRateRange> subTable = strategyRepository.getOrBuildSubRangeTable(
-                strategyId, excludeAwardIds, cacheKey
-        );
+        List<AwardRateRange> subTable = strategyRepository.buildSubRangeTable(strategyId, excludeAwardIds);
+        if (subTable == null || subTable.isEmpty()) {
+            throw new IllegalArgumentException("No awards remain after exclusions");
+        }
         int subPrecision = subTable.get(subTable.size() - 1).getRangeEnd();
-        int randomVal = new SecureRandom().nextInt(subPrecision);
-        return binarySearch(subTable, randomVal);
+        int randomVal = RANDOM.nextInt(subPrecision);
+        return ProbabilityTableBuilder.pick(subTable, randomVal);
     }
 
 }

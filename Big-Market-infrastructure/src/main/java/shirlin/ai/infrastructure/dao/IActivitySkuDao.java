@@ -23,9 +23,4 @@ public interface IActivitySkuDao {
 
     List<ActivitySku> selectByActivityIdAndStatus(@Param("activityId") Long activityId, @Param("status") Integer status);
 
-    int updateStockSurplus(@Param("id") Long id, @Param("stockSurplus") Integer stockSurplus);
-
-    /** 乐观扣减 SKU 剩余库存；返回影响行数 1=成功 0=库存不足 */
-    int deductStockSurplus(@Param("skuId") Long skuId);
-
 }

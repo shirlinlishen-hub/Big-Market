@@ -6,6 +6,12 @@ import shirlin.ai.infrastructure.dao.po.UserLuckAccount;
 
 @Mapper
 public interface IUserLuckAccountDao {
+    int insertIfAbsent(@Param("userId") String userId, @Param("strategyId") Long strategyId);
+
+    UserLuckAccount selectForUpdate(@Param("userId") String userId, @Param("strategyId") Long strategyId);
+
+    int setLuckValue(@Param("userId") String userId, @Param("strategyId") Long strategyId,
+                     @Param("luckValue") Integer luckValue);
     int insert(UserLuckAccount userLuckAccountPO);
 
     int updateById(UserLuckAccount userLuckAccountPO);
