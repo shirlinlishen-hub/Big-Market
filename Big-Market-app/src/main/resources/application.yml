@@ -15,3 +15,10 @@ spring:
     publisher-returns: true
     template:
       mandatory: true
+
+big-market:
+  delivery:
+    mode: ${BIG_MARKET_DELIVERY_MODE:local}
+    publisher-delay-ms: 500
+    publisher-batch-size: 100
+    outbox-lease-seconds: 30

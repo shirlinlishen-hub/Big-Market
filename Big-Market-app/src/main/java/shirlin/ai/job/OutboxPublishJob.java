@@ -3,6 +3,7 @@ package shirlin.ai.job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import shirlin.ai.infrastructure.messaging.OutboxPublishService;
@@ -11,6 +12,8 @@ import java.net.InetAddress;
 import java.time.Duration;
 
 @Component
+@ConditionalOnExpression("'${big-market.delivery.mode:local}' == 'mq-prepare' || "
+        + "'${big-market.delivery.mode:local}' == 'mq'")
 public class OutboxPublishJob {
     private static final Logger log = LoggerFactory.getLogger(OutboxPublishJob.class);
 

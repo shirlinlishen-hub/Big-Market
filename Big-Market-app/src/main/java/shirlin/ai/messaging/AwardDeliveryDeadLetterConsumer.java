@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import shirlin.ai.config.RabbitMQConfig;
@@ -15,6 +16,7 @@ import shirlin.ai.infrastructure.messaging.model.AwardDeliveryRequestedPayload;
 import shirlin.ai.infrastructure.messaging.model.DomainEventEnvelope;
 
 @Component
+@ConditionalOnProperty(prefix = "big-market.delivery", name = "mode", havingValue = "mq")
 public class AwardDeliveryDeadLetterConsumer {
     private static final Logger log =
             LoggerFactory.getLogger(AwardDeliveryDeadLetterConsumer.class);

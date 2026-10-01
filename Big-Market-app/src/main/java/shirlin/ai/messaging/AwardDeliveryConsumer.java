@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import shirlin.ai.config.RabbitMQConfig;
 import shirlin.ai.infrastructure.delivery.AwardDeliveryApplicationService;
@@ -14,6 +15,7 @@ import shirlin.ai.infrastructure.messaging.model.AwardDeliveryRequestedPayload;
 import shirlin.ai.infrastructure.messaging.model.DomainEventEnvelope;
 
 @Component
+@ConditionalOnProperty(prefix = "big-market.delivery", name = "mode", havingValue = "mq")
 public class AwardDeliveryConsumer {
     private static final TypeReference<DomainEventEnvelope<AwardDeliveryRequestedPayload>>
             EVENT_TYPE = new TypeReference<>() { };
