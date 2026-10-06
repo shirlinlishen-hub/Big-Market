@@ -45,23 +45,6 @@ mybatis:
   config-location:  classpath:/mybatis/config/mybatis-config.xml
 
 
-# Redis
-redis:
-  sdk:
-    config:
-      host: ${BIG_MARKET_REDIS_HOST:159.75.79.79}
-      port: ${BIG_MARKET_REDIS_PORT:16379}
-      password: ${BIG_MARKET_REDIS_PASSWORD:}
-      pool-size: 20
-      min-idle-size: 5
-      idle-timeout: 30000
-      connect-timeout: 5000
-      retry-attempts: 3
-      retry-interval: 1000
-      ping-interval: 60000
-      keep-alive: true
-
-
 # 日志
 logging:
   level:

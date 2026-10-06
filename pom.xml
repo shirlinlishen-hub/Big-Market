@@ -108,12 +108,6 @@
                 <version>1.15</version>
             </dependency>
 
-            <dependency>
-                <groupId>org.redisson</groupId>
-                <artifactId>redisson-spring-boot-starter</artifactId>
-                <version>3.44.0</version>
-            </dependency>
-
             <!-- ShardingSphere JDBC -->
             <dependency>
                 <groupId>org.apache.shardingsphere</groupId>
