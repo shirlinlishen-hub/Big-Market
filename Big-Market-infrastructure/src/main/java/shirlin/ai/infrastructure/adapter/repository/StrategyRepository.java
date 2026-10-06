@@ -3,9 +3,7 @@ package shirlin.ai.infrastructure.adapter.repository;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Repository;
 import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
-import shirlin.ai.domain.strategy.service.Armory.ProbabilityTableBuilder;
 import shirlin.ai.domain.strategy.service.Rule.FallbackAwardPolicy;
-import shirlin.ai.domain.strategy.model.entity.AwardRateRange;
 import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyEntity;
 import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
@@ -13,19 +11,12 @@ import shirlin.ai.infrastructure.dao.*;
 import shirlin.ai.infrastructure.dao.po.Strategy;
 import shirlin.ai.infrastructure.dao.po.StrategyAward;
 import shirlin.ai.infrastructure.dao.po.StrategyRule;
-import shirlin.ai.infrastructure.redis.IRedisService;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Repository
 public class StrategyRepository implements IStrategyRepository {
-
-    // Redis key 前缀
-    private static final String RANGE_TABLE_KEY        = "big_market:strategy:range_table:";
-    private static final String PRECISION_KEY          = "big_market:strategy:precision:";
-    private static final String WEIGHT_RANGE_TABLE_KEY = "big_market:strategy:weight_range_table:";
 
     @Resource
     private IStrategyDao strategyDao;
@@ -38,9 +29,6 @@ public class StrategyRepository implements IStrategyRepository {
 
     @Resource
     private IUserAwardRecordDao userAwardRecordDao;
-
-    @Resource
-    private IRedisService redisService;
 
     // ---- Strategy / Award 基础查询 ----
 
@@ -108,64 +96,11 @@ public class StrategyRepository implements IStrategyRepository {
                 .build();
     }
 
-    // ---- Redis 缓存：概率区间 / 精度 ----
-
-    @Override
-    public void storeStrategyAwardRangeTable(Long strategyId, List<AwardRateRange> rangeTable) {
-        redisService.setValue(RANGE_TABLE_KEY + strategyId, rangeTable);
-    }
-
-    @Override
-    public void storeStrategyPrecision(Long strategyId, int precision) {
-        redisService.setValue(PRECISION_KEY + strategyId, precision);
-    }
-
-    @Override
-    public int getStrategyPrecision(Long strategyId) {
-        return redisService.<Integer>getValue(PRECISION_KEY + strategyId);
-    }
-
-    @Override
-    public List<AwardRateRange> getStrategyRangeTable(Long strategyId) {
-        return redisService.getValue(RANGE_TABLE_KEY + strategyId);
-    }
-
     @Override
     public Integer queryFallbackAwardId(Long strategyId) {
         StrategyRule rule = strategyRuleDao.selectByStrategyIdAndRuleModel(strategyId, "rule_fallback");
         return FallbackAwardPolicy.requireValid(
                 rule == null ? null : rule.getRuleValue(), queryStrategyAwardListById(strategyId));
-    }
-
-    @Override
-    public List<AwardRateRange> buildSubRangeTable(Long strategyId, Set<Integer> excludeAwardIds) {
-        List<StrategyAwardEntity> awards = queryStrategyAwardListById(strategyId);
-        int precision = getStrategyPrecision(strategyId);
-
-        List<StrategyAwardEntity> remaining = awards.stream()
-                .filter(a -> !excludeAwardIds.contains(a.getAwardId()))
-                .collect(Collectors.toList());
-
-        java.util.Map<Integer, java.math.BigDecimal> rates = new java.util.HashMap<>();
-        for (StrategyAwardEntity award : remaining) {
-            if (rates.containsKey(award.getAwardId())) {
-                throw new IllegalArgumentException("Duplicate award in exclusion pool");
-            }
-            rates.put(award.getAwardId(), award.getAwardRate());
-        }
-        List<AwardRateRange> subTable = ProbabilityTableBuilder.build(rates, precision, false);
-
-        return subTable;
-    }
-
-    @Override
-    public void storeWeightRangeTable(Long strategyId, String groupId, List<AwardRateRange> table) {
-        redisService.setValue(WEIGHT_RANGE_TABLE_KEY + strategyId + ":" + groupId, table);
-    }
-
-    @Override
-    public List<AwardRateRange> getWeightRangeTable(Long strategyId, String groupId) {
-        return redisService.getValue(WEIGHT_RANGE_TABLE_KEY + strategyId + ":" + groupId);
     }
 
     // ---- 用户状态查询 ----

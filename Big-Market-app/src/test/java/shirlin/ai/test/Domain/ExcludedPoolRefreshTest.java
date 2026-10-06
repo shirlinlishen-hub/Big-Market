@@ -2,51 +2,50 @@ package shirlin.ai.test.Domain;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
-import shirlin.ai.domain.strategy.model.entity.AwardRateRange;
-import shirlin.ai.infrastructure.adapter.repository.StrategyRepository;
-import shirlin.ai.infrastructure.dao.IStrategyAwardDao;
-import shirlin.ai.infrastructure.dao.po.StrategyAward;
-import shirlin.ai.infrastructure.redis.IRedisService;
+import shirlin.ai.domain.strategy.adapter.repository.IStrategyRepository;
+import shirlin.ai.domain.strategy.model.entity.StrategyAwardEntity;
+import shirlin.ai.domain.strategy.model.entity.StrategyEntity;
+import shirlin.ai.domain.strategy.model.entity.StrategyRuleEntity;
+import shirlin.ai.domain.strategy.service.Armory.StrategyArmory;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ExcludedPoolRefreshTest {
+
     @Test
-    void excludedPoolDoesNotUseStaleRatesAfterStrategyChanges() {
-        StrategyRepository repository = new StrategyRepository();
-        IStrategyAwardDao awards = mock(IStrategyAwardDao.class);
-        IRedisService redis = mock(IRedisService.class);
-        ReflectionTestUtils.setField(repository, "strategyAwardDao", awards);
-        ReflectionTestUtils.setField(repository, "redisService", redis);
-        Map<String, Object> cache = new ConcurrentHashMap<>();
-        cache.put("big_market:strategy:precision:1", 100);
-        when(redis.getValue(anyString())).thenAnswer(call -> cache.get(call.getArgument(0)));
-        doAnswer(call -> {
-            cache.put(call.getArgument(0), call.getArgument(1));
-            return null;
-        }).when(redis).setValue(anyString(), any());
-        when(awards.selectByStrategyId(1L)).thenReturn(
-                List.of(award(101, "0.5"), award(102, "0.5")),
-                List.of(award(101, "0.2"), award(102, "0.8")));
+    void excludedPoolUsesCurrentMysqlAwardsOnEveryRequest() {
+        IStrategyRepository repository = mock(IStrategyRepository.class);
+        when(repository.queryStrategyById(1L)).thenReturn(StrategyEntity.builder()
+                .strategyId(1L).totalProbability(BigDecimal.ONE)
+                .probabilityPrecision(100).status(1).build());
+        when(repository.queryStrategyRuleByModel(1L, "rule_fallback")).thenReturn(
+                StrategyRuleEntity.builder().ruleValue("{\"award_id\":106}").build());
+        when(repository.queryStrategyAwardListById(1L)).thenReturn(
+                List.of(award(101, "0.50", 10), award(102, "0.50", 10),
+                        award(106, "0.00", -1)),
+                List.of(award(101, "0.50", 10), award(103, "0.50", 10),
+                        award(106, "0.00", -1)));
+        StrategyArmory armory = new StrategyArmory();
+        ReflectionTestUtils.setField(armory, "strategyRepository", repository);
 
-        List<AwardRateRange> first = repository.buildSubRangeTable(1L, Set.of(101));
-        List<AwardRateRange> refreshed = repository.buildSubRangeTable(1L, Set.of(101));
-
-        assertEquals(50, first.get(0).getRangeEnd());
-        assertEquals(80, refreshed.get(0).getRangeEnd());
+        assertEquals(102, armory.getRandomAwardId(1L, Set.of(101, 106)));
+        assertEquals(103, armory.getRandomAwardId(1L, Set.of(101, 106)));
     }
 
-    private static StrategyAward award(int id, String rate) {
-        StrategyAward result = new StrategyAward();
-        result.setStrategyId(1L); result.setAwardId(id);
-        result.setAwardRate(new BigDecimal(rate));
-        return result;
+    private StrategyAwardEntity award(int awardId, String rate, int count) {
+        return StrategyAwardEntity.builder()
+                .strategyId(1L)
+                .awardId(awardId)
+                .awardType(1)
+                .awardRate(new BigDecimal(rate))
+                .awardCount(count)
+                .awardSurplus(count)
+                .build();
     }
 }

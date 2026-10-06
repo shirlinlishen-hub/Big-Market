@@ -11,12 +11,13 @@ import shirlin.ai.domain.strategy.service.Armory.StrategyArmory;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class StrategyArmoryValidationTest {
     @Test
-    void validConfiguredRulesPublishDefaultAndWeightPools() {
+    void validConfiguredRulesPassMysqlValidation() {
         IStrategyRepository repository = mock(IStrategyRepository.class);
         StrategyArmory armory = new StrategyArmory();
         ReflectionTestUtils.setField(armory, "strategyRepository", repository);
@@ -41,19 +42,11 @@ class StrategyArmoryValidationTest {
                                 "\"threshold_value\":10,\"group_id\":\"group_10\"," +
                                 "\"award_rates\":{\"101\":0.20,\"106\":0.80}}]}").build());
 
-        armory.assembleLotteryStrategy(1L);
-
-        verify(repository).storeStrategyAwardRangeTable(eq(1L), argThat(ranges ->
-                ranges.size() == 2 && ranges.get(0).getRangeStart() == 0
-                        && ranges.get(0).getRangeEnd() == 40 && ranges.get(1).getRangeEnd() == 100));
-        verify(repository).storeWeightRangeTable(eq(1L), eq("group_10"), argThat(ranges ->
-                ranges.size() == 2 && ranges.get(0).getRangeEnd() == 20
-                        && ranges.get(1).getRangeEnd() == 100));
-        verify(repository).storeStrategyPrecision(1L, 100);
+        assertDoesNotThrow(() -> armory.assembleLotteryStrategy(1L));
     }
 
     @Test
-    void invalidPoolIsRejectedBeforeAnyCacheIsPublished() {
+    void invalidPoolIsRejected() {
         IStrategyRepository repository = mock(IStrategyRepository.class);
         StrategyArmory armory = new StrategyArmory();
         ReflectionTestUtils.setField(armory, "strategyRepository", repository);
@@ -64,11 +57,10 @@ class StrategyArmoryValidationTest {
                         .awardCount(-1).awardSurplus(-1).build()));
 
         assertThrows(IllegalArgumentException.class, () -> armory.assembleLotteryStrategy(1L));
-        verify(repository, never()).storeStrategyAwardRangeTable(anyLong(), anyList());
     }
 
     @Test
-    void invalidConfiguredLuckRuleIsRejectedBeforePublishingPool() {
+    void invalidConfiguredLuckRuleIsRejected() {
         IStrategyRepository repository = mock(IStrategyRepository.class);
         StrategyArmory armory = new StrategyArmory();
         ReflectionTestUtils.setField(armory, "strategyRepository", repository);
@@ -84,6 +76,5 @@ class StrategyArmoryValidationTest {
                         "{\"luck_threshold\":0,\"luck_award_id\":106,\"luck_increment\":1}").build());
 
         assertThrows(IllegalArgumentException.class, () -> armory.assembleLotteryStrategy(1L));
-        verify(repository, never()).storeStrategyAwardRangeTable(anyLong(), anyList());
     }
 }

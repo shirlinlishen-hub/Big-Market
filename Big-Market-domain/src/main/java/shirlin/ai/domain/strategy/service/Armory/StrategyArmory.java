@@ -19,34 +19,85 @@ import shirlin.ai.domain.strategy.service.Rule.PostDrawRulePolicy;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
-public class StrategyArmory  implements IStrategyArmory {
+public class StrategyArmory implements IStrategyArmory {
+
     private static final SecureRandom RANDOM = new SecureRandom();
 
     @Resource
     private IStrategyRepository strategyRepository;
 
-
-    /**
-     * 策略装配 -- 生成概率区间并缓存到Redis中
-     * 调用 -- 当前Strategy上线后/应用启动时预热
-     * @param StrategyId -- 抽奖活动
-     */
     @Override
-    public void assembleLotteryStrategy(Long StrategyId) {
+    public void assembleLotteryStrategy(Long strategyId) {
+        loadDefinition(strategyId);
+    }
 
-        //1. 查询当前Strategy下的所有奖品
-        List<StrategyAwardEntity> awards = strategyRepository.queryStrategyAwardListById(StrategyId);
+    @Override
+    public Integer getRandomAwardId(Long strategyId) {
+        return pick(loadDefinition(strategyId).defaultTable());
+    }
+
+    @Override
+    public Integer getRandomAwardId(Long strategyId, String weightGroupId) {
+        StrategyDefinition definition = loadDefinition(strategyId);
+        List<AwardRateRange> table = definition.weightTables().get(weightGroupId);
+        if (table == null || table.isEmpty()) {
+            throw new IllegalStateException(
+                    "Configured weight pool is missing: " + weightGroupId);
+        }
+        return pick(table);
+    }
+
+    @Override
+    public Integer getRandomAwardId(Long strategyId, Set<Integer> excludeAwardIds) {
+        StrategyDefinition definition = loadDefinition(strategyId);
+        if (excludeAwardIds == null || excludeAwardIds.isEmpty()) {
+            return pick(definition.defaultTable());
+        }
+
+        Map<Integer, BigDecimal> remainingRates = new HashMap<>();
+        for (StrategyAwardEntity award : definition.awards()) {
+            if (!excludeAwardIds.contains(award.getAwardId())) {
+                remainingRates.put(award.getAwardId(), award.getAwardRate());
+            }
+        }
+        if (remainingRates.isEmpty()) {
+            throw new IllegalArgumentException("No awards remain after exclusions");
+        }
+        return pick(ProbabilityTableBuilder.build(
+                remainingRates, definition.precision(), false));
+    }
+
+    private Integer pick(List<AwardRateRange> table) {
+        if (table == null || table.isEmpty()) {
+            throw new IllegalArgumentException("Probability pool is empty");
+        }
+        int upperBound = table.get(table.size() - 1).getRangeEnd();
+        return ProbabilityTableBuilder.pick(table, RANDOM.nextInt(upperBound));
+    }
+
+    private StrategyDefinition loadDefinition(Long strategyId) {
+        if (strategyId == null) {
+            throw new IllegalArgumentException("Strategy ID is required");
+        }
+
+        List<StrategyAwardEntity> awards = strategyRepository
+                .queryStrategyAwardListById(strategyId);
         if (awards == null || awards.isEmpty()) {
             throw new IllegalArgumentException("Strategy has no awards");
         }
 
-        //2. 获取概率精度
-        StrategyEntity strategy = strategyRepository.queryStrategyById(StrategyId);
-        if (strategy == null || strategy.getProbabilityPrecision() == null) {
-            throw new IllegalArgumentException("Strategy probability configuration is missing");
+        StrategyEntity strategy = strategyRepository.queryStrategyById(strategyId);
+        if (strategy == null || strategy.getProbabilityPrecision() == null
+                || strategy.getProbabilityPrecision() <= 0) {
+            throw new IllegalArgumentException(
+                    "Strategy probability configuration is missing");
         }
         if (strategy.getTotalProbability() == null
                 || strategy.getTotalProbability().compareTo(BigDecimal.ONE) != 0) {
@@ -54,134 +105,123 @@ public class StrategyArmory  implements IStrategyArmory {
         }
         int precision = strategy.getProbabilityPrecision();
 
-        //3. 生成概率区间表
         Map<Integer, BigDecimal> defaultRates = new HashMap<>();
         for (StrategyAwardEntity award : awards) {
-            if (award == null || award.getAwardId() == null || award.getAwardId() <= 0
-                    || defaultRates.containsKey(award.getAwardId())) {
-                throw new IllegalArgumentException("Strategy awards contain a missing or duplicate ID");
-            }
+            validateAward(award, defaultRates);
             defaultRates.put(award.getAwardId(), award.getAwardRate());
-            if (award.getAwardCount() == null || award.getAwardSurplus() == null
-                    || award.getAwardCount() < -1
-                    || (award.getAwardCount() == -1 && award.getAwardSurplus() != -1)
-                    || (award.getAwardCount() >= 0 && (award.getAwardSurplus() < 0
-                    || award.getAwardSurplus() > award.getAwardCount()))) {
-                throw new IllegalArgumentException("Strategy award stock configuration is invalid");
-            }
         }
-        List<AwardRateRange> rangeTable = ProbabilityTableBuilder.build(defaultRates, precision, true);
-        StrategyRuleEntity fallbackRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_fallback");
+        List<AwardRateRange> defaultTable = ProbabilityTableBuilder.build(
+                defaultRates, precision, true);
+
+        StrategyRuleEntity fallbackRule = strategyRepository.queryStrategyRuleByModel(
+                strategyId, "rule_fallback");
         int fallbackId = FallbackAwardPolicy.requireValid(
                 fallbackRule == null ? null : fallbackRule.getRuleValue(), awards);
-        StrategyRuleEntity lockRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_lock");
-        StrategyRuleEntity luckRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_luck");
+        validatePostDrawRules(strategyId, fallbackId, defaultRates.keySet());
+        validateBlacklistRule(strategyId, fallbackId);
+        Map<String, List<AwardRateRange>> weightTables = loadWeightTables(
+                strategyId, precision, defaultRates.keySet());
+
+        return new StrategyDefinition(
+                precision,
+                List.copyOf(awards),
+                List.copyOf(defaultTable),
+                Map.copyOf(weightTables));
+    }
+
+    private void validateAward(StrategyAwardEntity award,
+                               Map<Integer, BigDecimal> currentRates) {
+        if (award == null || award.getAwardId() == null || award.getAwardId() <= 0
+                || currentRates.containsKey(award.getAwardId())
+                || award.getAwardRate() == null) {
+            throw new IllegalArgumentException(
+                    "Strategy awards contain a missing or duplicate ID");
+        }
+        if (award.getAwardCount() == null || award.getAwardSurplus() == null
+                || award.getAwardCount() < -1
+                || (award.getAwardCount() == -1 && award.getAwardSurplus() != -1)
+                || (award.getAwardCount() >= 0 && (award.getAwardSurplus() < 0
+                || award.getAwardSurplus() > award.getAwardCount()))) {
+            throw new IllegalArgumentException(
+                    "Strategy award stock configuration is invalid");
+        }
+    }
+
+    private void validatePostDrawRules(Long strategyId, int fallbackId,
+                                       Set<Integer> awardIds) {
+        StrategyRuleEntity lockRule = strategyRepository.queryStrategyRuleByModel(
+                strategyId, "rule_lock");
+        StrategyRuleEntity luckRule = strategyRepository.queryStrategyRuleByModel(
+                strategyId, "rule_luck");
         RuleLockConfigEntity lockConfig = lockRule == null ? null
                 : JSON.parseObject(lockRule.getRuleValue(), RuleLockConfigEntity.class);
         RuleLuckConfigEntity luckConfig = luckRule == null ? null
                 : JSON.parseObject(luckRule.getRuleValue(), RuleLuckConfigEntity.class);
-        if ((lockRule != null && lockConfig == null) || (luckRule != null && luckConfig == null)) {
+        if ((lockRule != null && lockConfig == null)
+                || (luckRule != null && luckConfig == null)) {
             throw new IllegalArgumentException("Post-draw rule configuration is empty");
         }
         PostDrawRulePolicy.validate(lockConfig, luckConfig, fallbackId);
-        if (lockConfig != null && !defaultRates.keySet().containsAll(lockConfig.getLockedAwardIds())) {
+        if (lockConfig != null
+                && !awardIds.containsAll(lockConfig.getLockedAwardIds())) {
             throw new IllegalArgumentException("Lock rule references an unknown award");
         }
-        StrategyRuleEntity blacklistRule = strategyRepository.queryStrategyRuleByModel(StrategyId, "rule_blacklist");
-        if (blacklistRule != null) {
-            RuleBlacklistConfigEntity blacklist = JSON.parseObject(
-                    blacklistRule.getRuleValue(), RuleBlacklistConfigEntity.class);
-            if (blacklist == null || !Integer.valueOf(fallbackId).equals(blacklist.getAwardId())) {
-                throw new IllegalArgumentException("Blacklist award must be the configured fallback");
-            }
-        }
+    }
 
+    private void validateBlacklistRule(Long strategyId, int fallbackId) {
+        StrategyRuleEntity blacklistRule = strategyRepository.queryStrategyRuleByModel(
+                strategyId, "rule_blacklist");
+        if (blacklistRule == null) {
+            return;
+        }
+        RuleBlacklistConfigEntity blacklist = JSON.parseObject(
+                blacklistRule.getRuleValue(), RuleBlacklistConfigEntity.class);
+        if (blacklist == null
+                || !Integer.valueOf(fallbackId).equals(blacklist.getAwardId())) {
+            throw new IllegalArgumentException(
+                    "Blacklist award must be the configured fallback");
+        }
+    }
+
+    private Map<String, List<AwardRateRange>> loadWeightTables(
+            Long strategyId, int precision, Set<Integer> awardIds) {
         StrategyRuleEntity weightRule = strategyRepository.queryStrategyRuleByModel(
-                StrategyId, RuleTypeVO.RULEWEIGHT.getRuleModel());
-        Map<String, List<AwardRateRange>> weightTables = new HashMap<>();
-        if (weightRule != null) {
-            RuleWeightConfigEntity weightConfig = JSON.parseObject(weightRule.getRuleValue(), RuleWeightConfigEntity.class);
-            if (weightConfig == null || weightConfig.getGroups() == null || weightConfig.getGroups().isEmpty()
-                    || !"draw_count".equals(weightConfig.getThresholdKey())) {
-                throw new IllegalArgumentException("Unsupported or empty weight rule configuration");
+                strategyId, RuleTypeVO.RULEWEIGHT.getRuleModel());
+        if (weightRule == null) {
+            return Map.of();
+        }
+
+        RuleWeightConfigEntity config = JSON.parseObject(
+                weightRule.getRuleValue(), RuleWeightConfigEntity.class);
+        if (config == null || config.getGroups() == null || config.getGroups().isEmpty()
+                || !"draw_count".equals(config.getThresholdKey())) {
+            throw new IllegalArgumentException(
+                    "Unsupported or empty weight rule configuration");
+        }
+
+        Set<Integer> thresholds = new HashSet<>();
+        Map<String, List<AwardRateRange>> tables = new HashMap<>();
+        for (RuleWeightConfigEntity.WeightGroup group : config.getGroups()) {
+            if (group == null || group.getGroupId() == null || group.getGroupId().isBlank()
+                    || group.getThresholdValue() == null || group.getThresholdValue() < 0
+                    || !thresholds.add(group.getThresholdValue())
+                    || group.getAwardRates() == null || group.getAwardRates().isEmpty()
+                    || !awardIds.containsAll(group.getAwardRates().keySet())) {
+                throw new IllegalArgumentException("Invalid weight group configuration");
             }
-            Set<Integer> thresholds = new HashSet<>();
-            for (RuleWeightConfigEntity.WeightGroup group : weightConfig.getGroups()) {
-                if (group == null || group.getGroupId() == null || group.getGroupId().isBlank()
-                        || group.getThresholdValue() == null || group.getThresholdValue() < 0
-                        || !thresholds.add(group.getThresholdValue())
-                        || group.getAwardRates() == null || group.getAwardRates().isEmpty()
-                        || !defaultRates.keySet().containsAll(group.getAwardRates().keySet())) {
-                    throw new IllegalArgumentException("Invalid weight group configuration");
-                }
-                List<AwardRateRange> table = ProbabilityTableBuilder.build(group.getAwardRates(), precision, true);
-                if (weightTables.putIfAbsent(group.getGroupId(), table) != null) {
-                    throw new IllegalArgumentException("Duplicate weight group ID");
-                }
+            List<AwardRateRange> table = ProbabilityTableBuilder.build(
+                    group.getAwardRates(), precision, true);
+            if (tables.putIfAbsent(group.getGroupId(), List.copyOf(table)) != null) {
+                throw new IllegalArgumentException("Duplicate weight group ID");
             }
         }
-
-        // Publish only after validating the complete strategy configuration.
-        strategyRepository.storeStrategyAwardRangeTable(StrategyId, rangeTable);
-        strategyRepository.storeStrategyPrecision(StrategyId, precision);
-        weightTables.forEach((groupId, table) ->
-                strategyRepository.storeWeightRangeTable(StrategyId, groupId, table));
-
-        // All pools have been validated before publication.
+        return tables;
     }
 
-    /**
-     * 抽奖 -- 二分查找命中奖品
-     * @param StrategyId
-     * @return
-     */
-    @Override
-    public Integer getRandomAwardId(Long StrategyId) {
-        //获取精度
-        int precision = strategyRepository.getStrategyPrecision(StrategyId);
-        // Ticket range: [0, precision).
-        int randomValue = RANDOM.nextInt(precision);
-
-        //从Redis中取出RangeTbale
-        List<AwardRateRange> rangeTable = strategyRepository.getStrategyRangeTable(StrategyId);
-
-        //二分查找
-        return ProbabilityTableBuilder.pick(rangeTable, randomValue);
+    private record StrategyDefinition(
+            int precision,
+            List<StrategyAwardEntity> awards,
+            List<AwardRateRange> defaultTable,
+            Map<String, List<AwardRateRange>> weightTables) {
     }
-
-    /**
-     * 权重分组抽奖 -- 使用预装配的权重专属区间表
-     */
-    @Override
-    public Integer getRandomAwardId(Long strategyId, String weightGroupId) {
-        List<AwardRateRange> weightTable = strategyRepository.getWeightRangeTable(strategyId, weightGroupId);
-        if (weightTable == null || weightTable.isEmpty()) {
-            throw new IllegalStateException("Configured weight pool is missing: " + weightGroupId);
-        }
-        int upperBound = weightTable.get(weightTable.size() - 1).getRangeEnd();
-        int randomVal = RANDOM.nextInt(upperBound);
-        return ProbabilityTableBuilder.pick(weightTable, randomVal);
-    }
-
-    /**
-     * 带排除的抽奖 -- 当某些奖品被规则过滤掉，在剩余奖品中计算
-     * @param strategyId
-     * @param excludeAwardIds
-     * @return
-     */
-    @Override
-    public Integer getRandomAwardId(Long strategyId, Set<Integer> excludeAwardIds) {
-        // 如果没有排除项, 走常规逻辑
-        if (excludeAwardIds == null || excludeAwardIds.isEmpty()) {
-            return getRandomAwardId(strategyId);
-        }
-        List<AwardRateRange> subTable = strategyRepository.buildSubRangeTable(strategyId, excludeAwardIds);
-        if (subTable == null || subTable.isEmpty()) {
-            throw new IllegalArgumentException("No awards remain after exclusions");
-        }
-        int subPrecision = subTable.get(subTable.size() - 1).getRangeEnd();
-        int randomVal = RANDOM.nextInt(subPrecision);
-        return ProbabilityTableBuilder.pick(subTable, randomVal);
-    }
-
 }
