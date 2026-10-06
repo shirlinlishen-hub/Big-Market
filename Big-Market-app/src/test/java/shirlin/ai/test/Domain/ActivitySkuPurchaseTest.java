@@ -7,6 +7,7 @@ import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
 import shirlin.ai.domain.Activity.model.entity.ActivityFactorEntity;
 import shirlin.ai.domain.Activity.model.entity.ActivityOrderEntity;
 import shirlin.ai.domain.Activity.model.entity.ActivitySkuEntity;
+import shirlin.ai.domain.Activity.service.ActivityEligibilityService;
 import shirlin.ai.domain.Activity.service.Sku.ActivitySkuService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,12 +19,14 @@ public class ActivitySkuPurchaseTest {
     @Test
     void purchaseGrantsConfiguredDrawsWithoutConsumingOne() {
         IActivityRepository repository = mock(IActivityRepository.class);
+        ActivityEligibilityService eligibility = mock(ActivityEligibilityService.class);
         ActivitySkuService service = new ActivitySkuService();
         ReflectionTestUtils.setField(service, "activityRepository", repository);
+        ReflectionTestUtils.setField(service, "activityEligibilityService", eligibility);
         ActivityFactorEntity factor = ActivityFactorEntity.builder()
                 .userId("buyer-1").activityId(20001L).strategyId(100001L)
                 .skuId(30001L).outBusinessNo("payment-123").build();
-        when(repository.queryActivityById(20001L)).thenReturn(ActivityEntity.builder()
+        when(eligibility.requireActive(20001L)).thenReturn(ActivityEntity.builder()
                 .activityId(20001L).strategyId(100001L).status(1).build());
         when(repository.queryActivitySku(30001L)).thenReturn(ActivitySkuEntity.builder()
                 .skuId(30001L).activityId(20001L).activityCountId(10001L).status(1).build());

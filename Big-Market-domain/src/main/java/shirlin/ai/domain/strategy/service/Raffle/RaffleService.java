@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import shirlin.ai.domain.Activity.model.entity.ActivityFactorEntity;
 import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
-import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
+import shirlin.ai.domain.Activity.service.ActivityEligibilityService;
 import shirlin.ai.domain.strategy.model.entity.RaffleFactorEntity;
 import shirlin.ai.domain.strategy.model.entity.RaffleResultEntity;
 import shirlin.ai.domain.strategy.model.entity.DrawOrderEntity;
@@ -29,7 +29,7 @@ public class RaffleService implements IRaffleService {
     @Resource
     private RaffleOrderService raffleOrderService;
     @Resource
-    private IActivityRepository activityRepository;
+    private ActivityEligibilityService activityEligibilityService;
 
     @Override
     public RaffleResultEntity doRaffle(ActivityFactorEntity factor) {
@@ -38,9 +38,8 @@ public class RaffleService implements IRaffleService {
                 || factor.getOutBusinessNo().isBlank()) {
             throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode());
         }
-        ActivityEntity activity = activityRepository.queryActivityById(factor.getActivityId());
-        if (activity == null || activity.getStrategyId() == null || activity.getStatus() == null
-                || activity.getStatus() != 1) {
+        ActivityEntity activity = activityEligibilityService.requireActive(factor.getActivityId());
+        if (activity.getStrategyId() == null) {
             throw new AppException(ResponseCode.ACTIVITY_NOT_EXISTS.getCode());
         }
         factor.setStrategyId(activity.getStrategyId());

@@ -10,20 +10,6 @@ import java.util.List;
 
 public interface IActivityRepository {
 
-    /**
-     * 活动上线将Activity配置信息写入Redis
-     * @param activity
-     */
-    void cacheActivity(ActivityEntity activity);
-
-
-    /**
-     * 从缓存中获取活动配置信息
-     * @param activityId
-     * @return
-     */
-    ActivityEntity cacheGetActivity(Long activityId);
-
     // ---- 参与订单（Phase 2 事务内） ----
 
     /** Persist the purchase, reserve SKU stock and grant configured draw rights atomically. */

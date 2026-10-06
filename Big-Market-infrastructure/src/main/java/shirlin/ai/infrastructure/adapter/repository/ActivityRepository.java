@@ -17,7 +17,6 @@ import shirlin.ai.infrastructure.dao.po.ActivitySku;
 import shirlin.ai.infrastructure.dao.po.ActivityCount;
 import shirlin.ai.infrastructure.dao.po.ActivityOrder;
 import shirlin.ai.infrastructure.dao.po.SkuRebateOrder;
-import shirlin.ai.infrastructure.redis.IRedisService;
 import shirlin.ai.types.Tool.SnowflakeIdGenerator;
 import shirlin.ai.types.enums.ResponseCode;
 import shirlin.ai.types.exception.AppException;
@@ -26,8 +25,6 @@ import java.util.*;
 
 @Repository
 public class ActivityRepository implements IActivityRepository {
-
-    private static final String ACTIVITY_KEY = "big_market:activity:activity";
 
     @Resource
     private IActivityDao activityDao;
@@ -53,8 +50,6 @@ public class ActivityRepository implements IActivityRepository {
     private SnowflakeIdGenerator idGenerator;
 
     @Resource
-    private IRedisService redisService;
-    @Resource
     private MysqlInventoryBucketService inventoryBucketService;
     @Resource
     private TransactionalOutboxService outboxService;
@@ -66,18 +61,6 @@ public class ActivityRepository implements IActivityRepository {
         }
         return activity.getActivityId();
     }
-
-    @Override
-    public void cacheActivity(ActivityEntity activity) {
-        redisService.setValue(ACTIVITY_KEY + activity.getActivityId(), activity);
-    }
-
-    @Override
-    public ActivityEntity cacheGetActivity(Long activityId) {
-        return redisService.getValue(ACTIVITY_KEY + activityId);
-
-    }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)

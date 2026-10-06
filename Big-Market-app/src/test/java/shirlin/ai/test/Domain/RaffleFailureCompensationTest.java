@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import shirlin.ai.domain.Activity.model.entity.ActivityFactorEntity;
 import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
-import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
+import shirlin.ai.domain.Activity.service.ActivityEligibilityService;
 import shirlin.ai.domain.strategy.model.entity.DrawOrderEntity;
 import shirlin.ai.domain.strategy.model.entity.RaffleResultEntity;
 import shirlin.ai.domain.strategy.service.IRaffleStrategy;
@@ -21,14 +21,14 @@ class RaffleFailureCompensationTest {
         RaffleService service = new RaffleService();
         RaffleOrderService orders = mock(RaffleOrderService.class);
         IRaffleStrategy strategy = mock(IRaffleStrategy.class);
-        IActivityRepository activities = mock(IActivityRepository.class);
+        ActivityEligibilityService eligibility = mock(ActivityEligibilityService.class);
         ReflectionTestUtils.setField(service, "raffleOrderService", orders);
         ReflectionTestUtils.setField(service, "raffleStrategy", strategy);
-        ReflectionTestUtils.setField(service, "activityRepository", activities);
+        ReflectionTestUtils.setField(service, "activityEligibilityService", eligibility);
         ActivityFactorEntity factor = ActivityFactorEntity.builder()
                 .userId("user-1").activityId(20001L).strategyId(1L)
                 .outBusinessNo("request-1").build();
-        when(activities.queryActivityById(20001L)).thenReturn(ActivityEntity.builder()
+        when(eligibility.requireActive(20001L)).thenReturn(ActivityEntity.builder()
                 .activityId(20001L).strategyId(1L).status(1).build());
         DrawOrderEntity order = DrawOrderEntity.builder().orderId("draw-1")
                 .userId("user-1").status(0).newlyCreated(true).build();
@@ -44,14 +44,14 @@ class RaffleFailureCompensationTest {
         RaffleService service = new RaffleService();
         RaffleOrderService orders = mock(RaffleOrderService.class);
         IRaffleStrategy strategy = mock(IRaffleStrategy.class);
-        IActivityRepository activities = mock(IActivityRepository.class);
+        ActivityEligibilityService eligibility = mock(ActivityEligibilityService.class);
         ReflectionTestUtils.setField(service, "raffleOrderService", orders);
         ReflectionTestUtils.setField(service, "raffleStrategy", strategy);
-        ReflectionTestUtils.setField(service, "activityRepository", activities);
+        ReflectionTestUtils.setField(service, "activityEligibilityService", eligibility);
         ActivityFactorEntity factor = ActivityFactorEntity.builder()
                 .userId("user-1").activityId(20001L).strategyId(1L)
                 .outBusinessNo("request-2").build();
-        when(activities.queryActivityById(20001L)).thenReturn(ActivityEntity.builder()
+        when(eligibility.requireActive(20001L)).thenReturn(ActivityEntity.builder()
                 .activityId(20001L).strategyId(1L).status(1).build());
         DrawOrderEntity order = DrawOrderEntity.builder().orderId("draw-2")
                 .userId("user-1").status(0).newlyCreated(true).build();
