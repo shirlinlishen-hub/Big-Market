@@ -48,5 +48,5 @@
 - 支付成功、退款和撤销事件都使用同一签名入口。支持 `PAYMENT_SUCCEEDED`、`REFUNDED`、`CANCELLED`；退款会回收未使用额度并记录已经消费的权益暴露量。无限额度退款会暂停可用余额并进入人工审核。
 - 发放查询接口为 `/api/v1/awards/{orderId}/delivery`；运营角色可使用 `/api/v1/admin/award-deliveries` 查询、重试和人工结案。运营 JWT 需要包含 `roles: ["operations"]`。
 - 分片配置仍是草案：本迁移使用单库本地事务。后续启用分片前，必须设计用户维度共址、DDL、路由和跨表事务，并在真实 MySQL 中做并发与故障恢复测试。
-- 需要修改策略概率时，先更新数据库配置并重新装配策略，再开放请求；当前没有在线热切换的版本指针。排除奖池每次按当前数据库配置重新构建，避免沿用旧子奖池缓存。
+- 活动、策略、奖品和规则配置以 MySQL 为唯一权威来源。抽奖请求按当前数据库配置构建概率区间，不需要刷新 Redis；修改策略时必须在一个受控数据库事务中完成整套配置，并在开放流量前运行策略装配校验。当前没有在线热切换的版本指针。
 - 可选的真实 MySQL 库存并发测试使用独立数据库 `big_market_stock_test`。设置 `BIG_MARKET_STOCK_TEST_JDBC_URL`、`BIG_MARKET_STOCK_TEST_DB_USER`、`BIG_MARKET_STOCK_TEST_DB_PASSWORD` 后运行 `MysqlAwardStockConcurrencyTest`；未设置时用例会跳过。测试只创建库存桶表，并创建/删除自己的库存桶记录。
