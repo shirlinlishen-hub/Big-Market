@@ -4,9 +4,9 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import shirlin.ai.domain.Activity.adapter.repository.IActivityRepository;
 import shirlin.ai.domain.Activity.model.entity.ActivityFactorEntity;
 import shirlin.ai.domain.Activity.model.entity.ActivityEntity;
+import shirlin.ai.domain.Activity.service.ActivityEligibilityService;
 import shirlin.ai.domain.strategy.adapter.repository.IRaffleOrderRepository;
 import shirlin.ai.domain.strategy.model.entity.DrawOrderEntity;
 import shirlin.ai.domain.strategy.model.entity.RaffleResultEntity;
@@ -27,7 +27,7 @@ public class RaffleOrderService implements IRaffleOrderService {
     private IRaffleOrderRepository raffleOrderRepository;
 
     @Resource
-    private IActivityRepository activityRepository;
+    private ActivityEligibilityService activityEligibilityService;
 
     @Transactional(rollbackFor = Exception.class)
     public DrawOrderEntity reserveDraw(ActivityFactorEntity factor) {
@@ -45,15 +45,9 @@ public class RaffleOrderService implements IRaffleOrderService {
             }
             return existing;
         }
-        ActivityEntity activity = activityRepository.queryActivityById(factor.getActivityId());
-        if (activity == null || !factor.getStrategyId().equals(activity.getStrategyId())
-                || activity.getStatus() == null || activity.getStatus() != 1) {
+        ActivityEntity activity = activityEligibilityService.requireActive(factor.getActivityId());
+        if (!factor.getStrategyId().equals(activity.getStrategyId())) {
             throw new AppException(ResponseCode.ACTIVITY_NOT_EXISTS.getCode());
-        }
-        java.util.Date now = new java.util.Date();
-        if ((activity.getBeginTime() != null && now.before(activity.getBeginTime()))
-                || (activity.getEndTime() != null && now.after(activity.getEndTime()))) {
-            throw new AppException(ResponseCode.ACTIVITY_EXPIRED.getCode());
         }
         return raffleOrderRepository.reserveDraw(factor);
     }

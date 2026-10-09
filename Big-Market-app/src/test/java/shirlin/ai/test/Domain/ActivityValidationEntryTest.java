@@ -10,6 +10,8 @@ import shirlin.ai.domain.Activity.model.entity.ActivitySkuEntity;
 import shirlin.ai.domain.Activity.model.aggregate.CreateSkuOrderAggregate;
 import shirlin.ai.domain.Activity.service.ActivityEligibilityService;
 import shirlin.ai.domain.Activity.service.Sku.ActivitySkuService;
+import shirlin.ai.domain.strategy.adapter.repository.IRaffleOrderRepository;
+import shirlin.ai.domain.strategy.model.entity.DrawOrderEntity;
 import shirlin.ai.domain.strategy.service.Raffle.RaffleOrderService;
 import shirlin.ai.domain.strategy.service.Raffle.RaffleService;
 import shirlin.ai.types.enums.ResponseCode;
@@ -60,6 +62,33 @@ class ActivityValidationEntryTest {
 
         assertEquals(ResponseCode.ACTIVITY_NOT_EXISTS.getCode(), exception.getCode());
         verifyNoInteractions(orders);
+    }
+
+    @Test
+    void drawOrderUsesCanonicalValidationBeforeReservingQuota() {
+        ActivityEligibilityService eligibility = mock(ActivityEligibilityService.class);
+        IRaffleOrderRepository repository = mock(IRaffleOrderRepository.class);
+        RaffleOrderService service = new RaffleOrderService();
+        ReflectionTestUtils.setField(service, "activityEligibilityService", eligibility);
+        ReflectionTestUtils.setField(service, "raffleOrderRepository", repository);
+        ActivityFactorEntity factor = ActivityFactorEntity.builder()
+                .userId("user-1")
+                .activityId(20001L)
+                .strategyId(100001L)
+                .outBusinessNo("draw-request-1")
+                .build();
+        ActivityEntity validated = ActivityEntity.builder()
+                .activityId(20001L).strategyId(100001L).status(1).build();
+        DrawOrderEntity reserved = DrawOrderEntity.builder()
+                .orderId("draw-order-1").build();
+        when(eligibility.requireActive(20001L)).thenReturn(validated);
+        when(repository.reserveDraw(factor)).thenReturn(reserved);
+
+        DrawOrderEntity result = service.reserveDraw(factor);
+
+        assertEquals("draw-order-1", result.getOrderId());
+        verify(eligibility).requireActive(20001L);
+        verify(repository).reserveDraw(factor);
     }
 
     @Test
